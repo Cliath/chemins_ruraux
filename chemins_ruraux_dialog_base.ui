@@ -222,6 +222,16 @@
        </widget>
       </item>
       <item>
+       <widget class="QCheckBox" name="chkMNTLidar">
+        <property name="text">
+         <string>MNT LiDAR HD</string>
+        </property>
+        <property name="toolTip">
+         <string>Charge le MNT issu de LiDAR HD (IGNF_LIDAR-HD_MNT_ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW) via le WMS IGN Géoplateforme</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QCheckBox" name="chkPlanIGN">
         <property name="text">
          <string>PLAN IGN J+1</string>

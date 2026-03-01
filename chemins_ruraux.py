@@ -436,9 +436,10 @@ class CheminsRuraux:
         waze_tiles_checked = hasattr(self.dlg, 'chkWazeTiles') and self.dlg.chkWazeTiles.isChecked()
         photo_aeriennes_checked = hasattr(self.dlg, 'chkPhotoAeriennes') and self.dlg.chkPhotoAeriennes.isChecked()
         bd_ortho_checked = hasattr(self.dlg, 'chkBDOrtho') and self.dlg.chkBDOrtho.isChecked()
+        mnt_lidar_checked = hasattr(self.dlg, 'chkMNTLidar') and self.dlg.chkMNTLidar.isChecked()
         plan_ign_checked = hasattr(self.dlg, 'chkPlanIGN') and self.dlg.chkPlanIGN.isChecked()
         
-        if not cadastre_checked and not commune_checked and not ban_checked and not voirie_checked and not voirie_dep_checked and not osm_routes_checked and not bdtopo_routesnom_checked and not majic_checked and not scan_etat_major_checked and not scan_cassini_checked and not scan50_1950_checked and not waze_tiles_checked and not photo_aeriennes_checked and not bd_ortho_checked and not plan_ign_checked:
+        if not cadastre_checked and not commune_checked and not ban_checked and not voirie_checked and not voirie_dep_checked and not osm_routes_checked and not bdtopo_routesnom_checked and not majic_checked and not scan_etat_major_checked and not scan_cassini_checked and not scan50_1950_checked and not waze_tiles_checked and not photo_aeriennes_checked and not bd_ortho_checked and not mnt_lidar_checked and not plan_ign_checked:
             QMessageBox.warning(
                 self.iface.mainWindow(),
                 "Sélection requise",
@@ -468,7 +469,7 @@ class CheminsRuraux:
             voirie_checked, voirie_dep_checked, osm_routes_checked,
             bdtopo_routesnom_checked, majic_checked,
             scan_etat_major_checked, scan_cassini_checked, scan50_1950_checked,
-            waze_tiles_checked, bd_ortho_checked, plan_ign_checked
+            waze_tiles_checked, bd_ortho_checked, mnt_lidar_checked, plan_ign_checked
         ]) + len(photo_aeriennes_sources)
         # +1 pour le chargement éventuel de la commune (bbox)
         if (voirie_checked or voirie_dep_checked or osm_routes_checked or bdtopo_routesnom_checked) and not commune_checked:
@@ -919,60 +920,29 @@ class CheminsRuraux:
             return False, []
 
     def load_scan_historique_wms(self, layer_name_wms, display_name):
-        """Charge un scan historique IGN depuis la Géoplateforme (WMS raster).
-
-        Args:
-            layer_name_wms: Nom de la couche WMS (ex: GEOGRAPHICALGRIDSYSTEMS.ETATMAJOR40)
-            display_name: Nom affiché dans QGIS
-
-        Returns:
-            tuple: (bool, list) - (succès, liste des couches créées)
-        """
-        WMS_URL = "https://data.geopf.fr/wms-r"
-        crs = "EPSG:2154"
-        uri = f"crs={crs}&format=image/png&layers={layer_name_wms}&styles&url={WMS_URL}"
-
-        QgsMessageLog.logMessage(
-            f"Chargement scan historique WMS : {display_name}",
-            "CheminsRuraux", Qgis.Info
-        )
-
-        self._remove_layers_by_name(display_name)
-        wms_layer = QgsRasterLayer(uri, display_name, 'wms')
-
-        if wms_layer.isValid():
-            QgsProject.instance().addMapLayer(wms_layer)
-            QgsMessageLog.logMessage(
-                f"✓ {display_name} chargée avec succès",
-                "CheminsRuraux", Qgis.Success
-            )
-            return True, [wms_layer]
-        else:
-            QgsMessageLog.logMessage(
-                f"✗ Impossible de charger {display_name} : {wms_layer.error().message()}",
-                "CheminsRuraux", Qgis.Warning
-            )
-            return False, []
+        """Charge un scan historique IGN (EPSG:2154). Délègue à _load_wms_layer."""
+        return self._load_wms_layer(layer_name_wms, display_name, 'EPSG:2154')
 
     def load_wms_epsg3857(self, layer_name_wms, display_name):
-        """Charge une couche WMS IGN Géoplateforme en EPSG:3857.
+        """Charge une couche WMS IGN en EPSG:3857. Délègue à _load_wms_layer."""
+        return self._load_wms_layer(layer_name_wms, display_name, 'EPSG:3857')
 
-        Utilisé pour les couches qui ne déclarent pas EPSG:2154 dans leurs capacités
-        (ex : PLAN IGN J+1). QGIS reprojettera côté client dans le SCR du projet.
+    def _load_wms_layer(self, layer_name_wms, display_name, crs='EPSG:2154'):
+        """Charge une couche WMS depuis la Géoplateforme IGN (wms-r).
 
         Args:
-            layer_name_wms: Nom de la couche WMS
+            layer_name_wms: Nom de la couche WMS (typename)
             display_name: Nom affiché dans QGIS
+            crs: CRS demandé au serveur (ex: 'EPSG:2154', 'EPSG:3857', 'IGNF:WGS84G')
 
         Returns:
             tuple: (bool, list) - (succès, liste des couches créées)
         """
         WMS_URL = "https://data.geopf.fr/wms-r"
-        crs = "EPSG:3857"
         uri = f"crs={crs}&format=image/png&layers={layer_name_wms}&styles&url={WMS_URL}"
 
         QgsMessageLog.logMessage(
-            f"Chargement WMS (EPSG:3857) : {display_name}",
+            f"Chargement WMS ({crs}) : {display_name}",
             "CheminsRuraux", Qgis.Info
         )
 

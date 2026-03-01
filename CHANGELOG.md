@@ -1,3 +1,8 @@
+# [0.9.79] - 2026-03-01
+### Ajouté
+- Case à cocher **MNT LiDAR HD** (`IGNF_LIDAR-HD_MNT_ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW`) dans "Plans à charger" : charge le modèle numérique de terrain issu du LiDAR HD via le WMS IGN Géoplateforme (CRS `IGNF:WGS84G`).
+### Technique
+- Refactorisation : `load_scan_historique_wms()` et `load_wms_epsg3857()` délèguent désormais à une méthode générique `_load_wms_layer(typename, display_name, crs)`, éliminant la duplication de code.
 # [0.9.78] - 2026-03-01
 ### Corrigé
 - **PLAN IGN J+1** absent de l'ordre canonique des couches : ajouté juste avant Waze.
