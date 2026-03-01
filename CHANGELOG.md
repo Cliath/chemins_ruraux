@@ -1,3 +1,6 @@
+# [0.9.74] - 2026-03-01
+### Modifié
+- Mentions `(Licence Ouverte 2.0)` et `(ODbL)` retirées de tous les libellés des cases à cocher du dialogue.
 # [0.9.73] - 2026-03-01
 ### Modifié
 - **Photographies aériennes historiques** converti de bouton en case à cocher, intégrée dans "Tout sélectionner/Désélectionner". Quand cochée, le dialogue de choix des périodes s'ouvre à l'appui de "Charger les données", les périodes sélectionnées sont chargées dans la barre de progression comme les autres sources.

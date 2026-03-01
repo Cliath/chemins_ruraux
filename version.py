@@ -4,10 +4,16 @@ Version management for Voirie Communale plugin
 """
 
 
-__version__ = "0.9.73"
-__version_info__ = (0, 9, 73)
+__version__ = "0.9.74"
+__version_info__ = (0, 9, 74)
 
 VERSION_HISTORY = {
+    "0.9.74": {
+        "date": "2026-03-01",
+        "changes": [
+            "Modifié : suppression des mentions de licence dans les libellés des cases à cocher du dialogue."
+        ]
+    },
     "0.9.73": {
         "date": "2026-03-01",
         "changes": [
