@@ -34,7 +34,8 @@ set /p DEPLOY="> "
 if /I "%DEPLOY%"=="O" (
     echo.
     echo [3/3] Déploiement vers %QGIS_PLUGINS%...
-    robocopy "%~dp0" "%QGIS_PLUGINS%" /MIR /XD .git releases __pycache__ .github .vscode /XF *.zip *.qrc *.ui *.bat *.sh *.py.bak /NFL /NDL /NJH /NJS
+    set "SRC=%~dp0."
+    robocopy "%SRC%" "%QGIS_PLUGINS%" /MIR /XD .git releases __pycache__ .github .vscode /XF *.zip *.qrc *.ui *.bat *.sh *.py.bak /NFL /NDL /NJH /NJS
     if %ERRORLEVEL% GTR 7 (
         echo Erreur lors du déploiement
     ) else (
