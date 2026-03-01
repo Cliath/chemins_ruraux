@@ -4,10 +4,16 @@ Version management for Voirie Communale plugin
 """
 
 
-__version__ = "0.9.54"
-__version_info__ = (0, 9, 54)
+__version__ = "0.9.55"
+__version_info__ = (0, 9, 55)
 
 VERSION_HISTORY = {
+    "0.9.55": {
+        "date": "2026-03-01",
+        "changes": [
+            "Ajouté : suppression automatique des doublons de couches — si une couche du même nom (même commune) existe déjà dans le projet, elle est retirée avant le rechargement."
+        ]
+    },
     "0.9.54": {
         "date": "2026-03-01",
         "changes": [

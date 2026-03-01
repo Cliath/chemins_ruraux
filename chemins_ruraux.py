@@ -738,6 +738,7 @@ class CheminsRuraux:
         # Créer un groupe dans l'arbre des couches
         root = QgsProject.instance().layerTreeRoot()
         group_name = f"Cadastre - {code_insee}"
+        self._remove_group_by_name(group_name)
         cadastre_group = root.addGroup(group_name)
         
         loaded_count = 0
@@ -819,6 +820,25 @@ class CheminsRuraux:
     
     # URL du service WFS IGN Géoplateforme (constante pour tous les services WFS)
     WFS_IGN_URL = "https://data.geopf.fr/wfs"
+
+    def _remove_layers_by_name(self, layer_name):
+        """Supprime toutes les couches du projet portant ce nom exact."""
+        to_remove = [
+            lid for lid, lyr in QgsProject.instance().mapLayers().items()
+            if lyr.name() == layer_name
+        ]
+        for lid in to_remove:
+            QgsProject.instance().removeMapLayer(lid)
+
+    def _remove_group_by_name(self, group_name):
+        """Supprime récursivement un groupe (et ses couches) dans l'arbre des couches."""
+        root = QgsProject.instance().layerTreeRoot()
+        group = root.findGroup(group_name)
+        if group:
+            # Supprimer d'abord les couches du projet
+            for child in group.findLayers():
+                QgsProject.instance().removeMapLayer(child.layerId())
+            root.removeChildNode(group)
     
     def load_wfs_layer(self, typename, layer_name, code_insee=None, crs="EPSG:4326",
                        bbox=None, style_callback=None, geom_field="geom"):
@@ -859,6 +879,7 @@ class CheminsRuraux:
         wfs_layer = QgsVectorLayer(uri_string, layer_name, "WFS")
         
         if wfs_layer.isValid() and wfs_layer.featureCount() > 0:
+            self._remove_layers_by_name(layer_name)
             QgsProject.instance().addMapLayer(wfs_layer)
             
             # Appliquer le style personnalisé si fourni
@@ -1379,6 +1400,7 @@ class CheminsRuraux:
             cat_styles.append(QgsRendererCategory(g, symbol, libelle))
         layer.setRenderer(QgsCategorizedSymbolRenderer('groupe_personne', cat_styles))
 
+        self._remove_layers_by_name(f"Parcelles MAJIC {code_insee}")
         QgsProject.instance().addMapLayer(layer)
 
         QgsMessageLog.logMessage(
@@ -1541,6 +1563,7 @@ class CheminsRuraux:
             )
             return False, None
 
+        self._remove_layers_by_name(layer_name)
         QgsProject.instance().addMapLayer(filtered_layer)
         self._style_osm_layer(filtered_layer)
         return True, filtered_layer

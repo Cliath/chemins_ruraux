@@ -1,3 +1,6 @@
+# [0.9.55] - 2026-03-01
+### Ajouté
+- Suppression automatique des doublons : si une couche du même nom (même commune) existe déjà dans le projet QGIS, elle est retirée avant le rechargement. Concerne toutes les sources (cadastre, commune, BAN, voirie, OSM, BD TOPO, MAJIC).
 # [0.9.54] - 2026-03-01
 ### Modifié
 - Zoom après chargement : utilise désormais l'emprise de la couche commune plutôt que l'emprise combinée de toutes les couches chargées.
