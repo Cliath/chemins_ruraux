@@ -7,7 +7,9 @@ Licence : GNU GPL v2+
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon, QColor
-from qgis.PyQt.QtWidgets import QAction, QMessageBox
+from qgis.PyQt.QtWidgets import QAction, QMessageBox, QProgressDialog
+from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtWidgets import QApplication
 from qgis.core import (QgsProject, QgsVectorLayer, QgsRasterLayer, QgsMessageLog,
                        Qgis, QgsLayerTreeGroup, QgsCoordinateTransform,
                        QgsRendererCategory, QgsCategorizedSymbolRenderer, QgsSingleSymbolRenderer,
@@ -417,13 +419,44 @@ class CheminsRuraux:
         results = []
         loaded_layers = []
         commune_layer = None
-        
+
+        # Compter le nombre d'étapes pour la barre de progression
+        steps = sum([
+            cadastre_checked, commune_checked, ban_checked,
+            voirie_checked, voirie_dep_checked, osm_routes_checked,
+            bdtopo_routesnom_checked, rpg_sna_checked, majic_checked
+        ])
+        # +1 pour le chargement éventuel de la commune (bbox)
+        if (voirie_checked or voirie_dep_checked or osm_routes_checked or bdtopo_routesnom_checked or rpg_sna_checked) and not commune_checked:
+            steps += 1
+
+        progress = QProgressDialog(
+            "Chargement des données en cours...",
+            None,  # pas de bouton Annuler
+            0, steps,
+            self.iface.mainWindow()
+        )
+        progress.setWindowTitle("Voirie Communale")
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumDuration(1500)  # apparaît après 1,5 s d'attente
+        progress.setMinimumWidth(400)
+        current_step = 0
+
+        def advance(label):
+            nonlocal current_step
+            current_step += 1
+            progress.setLabelText(label)
+            progress.setValue(current_step)
+            QApplication.processEvents()
+
         if cadastre_checked:
+            advance(f"Chargement du cadastre ({code_insee})...")
             cadastre_success, cadastre_layers = self.load_cadastre_wms(code_insee)
             results.append(('Cadastre', cadastre_success))
             loaded_layers.extend(cadastre_layers)
         
         if commune_checked:
+            advance(f"Chargement de l'emprise communale ({code_insee})...")
             commune_success, commune_layer = self.load_commune_wfs(code_insee)
             results.append(('Emprise communale', commune_success))
             if commune_layer:
@@ -451,6 +484,7 @@ class CheminsRuraux:
                     "CheminsRuraux",
                     Qgis.Info
                 )
+                advance(f"Chargement de l'emprise communale pour le filtrage ({code_insee})...")
                 _, commune_layer = self.load_commune_wfs(code_insee)
             
             # Extraire le BBOX de la commune
@@ -459,24 +493,28 @@ class CheminsRuraux:
                 commune_bbox = (extent.xMinimum(), extent.yMinimum(), extent.xMaximum(), extent.yMaximum())
         
         if ban_checked:
+            advance(f"Chargement des adresses BAN ({code_insee})...")
             ban_success, ban_layer = self.load_ban_wfs(code_insee)
             results.append(('Adresses BAN', ban_success))
             if ban_layer:
                 loaded_layers.append(ban_layer)
         
         if voirie_checked:
+            advance(f"Chargement de la voirie communale ({code_insee})...")
             voirie_success, voirie_layer = self.load_voirie_wfs(code_insee, commune_bbox)
             results.append(('Voirie communale', voirie_success))
             if voirie_layer:
                 loaded_layers.append(voirie_layer)
         
         if voirie_dep_checked:
+            advance(f"Chargement de la voirie départementale ({code_insee})...")
             voirie_dep_success, voirie_dep_layer = self.load_voirie_dep_wfs(code_insee, commune_bbox)
             results.append(('Voirie départementale', voirie_dep_success))
             if voirie_dep_layer:
                 loaded_layers.append(voirie_dep_layer)
 
         if osm_routes_checked:
+            advance(f"Chargement des routes OSM ({code_insee})...")
             osm_success, osm_layer = self.load_osm_roads(code_insee, commune_bbox)
             results.append(('Routes OSM', osm_success))
             if osm_layer:
@@ -485,18 +523,21 @@ class CheminsRuraux:
 
 
         if bdtopo_routesnom_checked:
+            advance(f"Chargement BD TOPO Routes nommées ({code_insee})...")
             bdtopo_routesnom_success, bdtopo_routesnom_layer = self.load_bdtopo_routesnom_wfs(code_insee, commune_bbox)
             results.append(('BD TOPO Routes numérotées ou nommées', bdtopo_routesnom_success))
             if bdtopo_routesnom_layer:
                 loaded_layers.append(bdtopo_routesnom_layer)
 
         if rpg_sna_checked:
+            advance(f"Chargement SNA RPG ({code_insee})...")
             rpg_sna_success, rpg_sna_layer = self.load_rpg_sna_wfs(code_insee, commune_bbox)
             results.append(('Surfaces non agricoles RPG', rpg_sna_success))
             if rpg_sna_layer:
                 loaded_layers.append(rpg_sna_layer)
 
         if majic_checked:
+            advance(f"Chargement des parcelles MAJIC ({code_insee})...")
             majic_success, majic_layer = self.load_majic_parcelles(code_insee)
             results.append(('Parcelles MAJIC', majic_success))
             if majic_layer:
@@ -508,6 +549,10 @@ class CheminsRuraux:
                     "Impossible de charger les parcelles MAJIC pour la commune sélectionnée.\n\n"
                     "Vérifiez la connexion internet, le code INSEE, ou consultez le journal des messages pour plus de détails."
                 )
+
+        # Fermer la boîte de progression
+        progress.setValue(steps)
+        progress.close()
 
         # Zoomer sur les couches qui viennent d'être chargées
         success_count = sum(1 for _, success in results if success)

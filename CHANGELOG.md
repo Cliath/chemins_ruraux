@@ -1,3 +1,6 @@
+# [0.9.46] - 2026-03-01
+### Ajouté
+- Barre de progression (`QProgressDialog`) affichée après 1,5 seconde d'attente, avec le nom de la source en cours de chargement. Se ferme automatiquement à la fin.
 # [0.9.45] - 2026-03-01
 ### Modifié
 - SNA RPG : le flux WFS n'est pas encore disponible sur la Géoplateforme IGN. La case à cocher est conservée mais affiche un message d'information en attendant la mise à disposition.

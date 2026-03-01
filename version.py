@@ -4,10 +4,16 @@ Version management for Voirie Communale plugin
 """
 
 
-__version__ = "0.9.45"
-__version_info__ = (0, 9, 45)
+__version__ = "0.9.46"
+__version_info__ = (0, 9, 46)
 
 VERSION_HISTORY = {
+    "0.9.46": {
+        "date": "2026-03-01",
+        "changes": [
+            "Ajouté : barre de progression (QProgressDialog) affichée après 1,5 s de téléchargement, avec label mis à jour pour chaque source."
+        ]
+    },
     "0.9.45": {
         "date": "2026-03-01",
         "changes": [
