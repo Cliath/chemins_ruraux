@@ -428,13 +428,12 @@ class CheminsRuraux:
         voirie_dep_checked = self.dlg.chkVoirieDep.isChecked()
         osm_routes_checked = self.dlg.chkOsmRoutes.isChecked()
         bdtopo_routesnom_checked = hasattr(self.dlg, 'chkBDTopoRoutesNom') and self.dlg.chkBDTopoRoutesNom.isChecked()
-        rpg_sna_checked = hasattr(self.dlg, 'chkRpgSna') and self.dlg.chkRpgSna.isChecked()
         majic_checked = self.dlg.chkMajic.isChecked()
         scan_etat_major_checked = hasattr(self.dlg, 'chkScanEtatMajor') and self.dlg.chkScanEtatMajor.isChecked()
         scan_cassini_checked = hasattr(self.dlg, 'chkScanCassini') and self.dlg.chkScanCassini.isChecked()
         scan50_1950_checked = hasattr(self.dlg, 'chkScan50_1950') and self.dlg.chkScan50_1950.isChecked()
         
-        if not cadastre_checked and not commune_checked and not ban_checked and not voirie_checked and not voirie_dep_checked and not osm_routes_checked and not bdtopo_routesnom_checked and not rpg_sna_checked and not majic_checked and not scan_etat_major_checked and not scan_cassini_checked and not scan50_1950_checked:
+        if not cadastre_checked and not commune_checked and not ban_checked and not voirie_checked and not voirie_dep_checked and not osm_routes_checked and not bdtopo_routesnom_checked and not majic_checked and not scan_etat_major_checked and not scan_cassini_checked and not scan50_1950_checked:
             QMessageBox.warning(
                 self.iface.mainWindow(),
                 "Sélection requise",
@@ -451,11 +450,11 @@ class CheminsRuraux:
         steps = sum([
             cadastre_checked, commune_checked, ban_checked,
             voirie_checked, voirie_dep_checked, osm_routes_checked,
-            bdtopo_routesnom_checked, rpg_sna_checked, majic_checked,
+            bdtopo_routesnom_checked, majic_checked,
             scan_etat_major_checked, scan_cassini_checked, scan50_1950_checked
         ])
         # +1 pour le chargement éventuel de la commune (bbox)
-        if (voirie_checked or voirie_dep_checked or osm_routes_checked or bdtopo_routesnom_checked or rpg_sna_checked) and not commune_checked:
+        if (voirie_checked or voirie_dep_checked or osm_routes_checked or bdtopo_routesnom_checked) and not commune_checked:
             steps += 1
 
         progress = QProgressDialog(
@@ -492,7 +491,7 @@ class CheminsRuraux:
         
         # Récupérer l'emprise de la commune pour filtrer les voiries
         commune_bbox = None
-        if voirie_checked or voirie_dep_checked or osm_routes_checked or bdtopo_routesnom_checked or rpg_sna_checked:
+        if voirie_checked or voirie_dep_checked or osm_routes_checked or bdtopo_routesnom_checked:
             # Chercher d'abord si une commune existe déjà dans le projet
             if commune_layer is None:
                 for layer_id, layer in QgsProject.instance().mapLayers().items():
@@ -556,13 +555,6 @@ class CheminsRuraux:
             results.append(('BD TOPO Routes numérotées ou nommées', bdtopo_routesnom_success))
             if bdtopo_routesnom_layer:
                 loaded_layers.append(bdtopo_routesnom_layer)
-
-        if rpg_sna_checked:
-            advance(f"Chargement SNA RPG ({code_insee})...")
-            rpg_sna_success, rpg_sna_layer = self.load_rpg_sna_wfs(code_insee, commune_bbox)
-            results.append(('Surfaces non agricoles RPG', rpg_sna_success))
-            if rpg_sna_layer:
-                loaded_layers.append(rpg_sna_layer)
 
         if majic_checked:
             advance(f"Chargement des parcelles MAJIC ({code_insee})...")
@@ -717,25 +709,6 @@ class CheminsRuraux:
                 )
 
         return success, layer
-
-    def load_rpg_sna_wfs(self, code_insee, bbox=None):
-        """Charge les surfaces non agricoles (SNA) du RPG.
-
-        NOTE : La couche SNA n'est pas encore disponible en flux WFS sur la
-        Géoplateforme IGN. Cette méthode affiche un message d'information et
-        retourne False en attendant la mise à disposition du flux.
-
-        Returns:
-            tuple: (bool, None)
-        """
-        QMessageBox.information(
-            self.iface.mainWindow(),
-            "Surfaces non agricoles RPG — Non disponible",
-            "La couche Surfaces Non Agricoles (SNA) du RPG n'est pas encore "
-            "disponible en flux WFS sur la Géoplateforme IGN.\n\n"
-            "Cette fonctionnalité sera activée dès que le flux sera mis à disposition."
-        )
-        return False, None
 
     def load_cadastre_wms(self, code_insee):
         """Charge les couches cadastrales WMS pour le code INSEE donné

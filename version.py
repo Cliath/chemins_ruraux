@@ -4,10 +4,16 @@ Version management for Voirie Communale plugin
 """
 
 
-__version__ = "0.9.61"
-__version_info__ = (0, 9, 61)
+__version__ = "0.9.62"
+__version_info__ = (0, 9, 62)
 
 VERSION_HISTORY = {
+    "0.9.62": {
+        "date": "2026-03-01",
+        "changes": [
+            "Supprimé : case Surfaces non agricoles RPG (SNA) — source non disponible, surchargement inutile."
+        ]
+    },
     "0.9.61": {
         "date": "2026-03-01",
         "changes": [

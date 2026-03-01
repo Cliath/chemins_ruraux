@@ -132,16 +132,6 @@
      </widget>
     </item>
     <item>
-     <widget class="QCheckBox" name="chkRpgSna">
-      <property name="text">
-      <string>Surfaces non agricoles RPG (bientôt disponible)</string>
-      </property>
-      <property name="toolTip">
-       <string>Surfaces Non Agricoles (SNA) du RPG — flux WFS non encore disponible sur la Géoplateforme IGN</string>
-      </property>
-     </widget>
-    </item>
-    <item>
      <widget class="QCheckBox" name="chkMajic">
       <property name="text">
       <string>Parcelles personnes morales (MAJIC) (Licence Ouverte 2.0)</string>

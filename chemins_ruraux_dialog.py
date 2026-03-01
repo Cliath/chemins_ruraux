@@ -26,7 +26,7 @@ class CheminsRurauxDialog(QtWidgets.QDialog, Ui_CheminsRurauxDialogBase):
         # Liste de toutes les cases à cocher de sélection de couches
         self._layer_checkboxes = [
             'chkCadastre', 'chkCommune', 'chkBAN',
-            'chkVoirie', 'chkVoirieDep', 'chkOsmRoutes', 'chkBDTopoRoutesNom', 'chkRpgSna', 'chkMajic',
+            'chkVoirie', 'chkVoirieDep', 'chkOsmRoutes', 'chkBDTopoRoutesNom', 'chkMajic',
             'chkScanEtatMajor', 'chkScanCassini', 'chkScan50_1950'
         ]
         # Utiliser 'clicked' (pas 'stateChanged') pour les clics utilisateur sur la case maître

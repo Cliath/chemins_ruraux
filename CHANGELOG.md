@@ -1,3 +1,6 @@
+# [0.9.62] - 2026-03-01
+### Supprimé
+- Case **Surfaces non agricoles RPG** (SNA) retirée — la source n'est pas disponible et surchargement inutile.
 # [0.9.61] - 2026-03-01
 ### Ajouté
 - **SCAN 50® 1950** (`GEOGRAPHICALGRIDSYSTEMS.MAPS.SCAN50.1950`) ajouté dans la section Plans à charger.
