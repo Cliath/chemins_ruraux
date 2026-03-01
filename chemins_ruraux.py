@@ -948,6 +948,45 @@ class CheminsRuraux:
             )
             return False, []
 
+    def load_wms_epsg3857(self, layer_name_wms, display_name):
+        """Charge une couche WMS IGN Géoplateforme en EPSG:3857.
+
+        Utilisé pour les couches qui ne déclarent pas EPSG:2154 dans leurs capacités
+        (ex : PLAN IGN J+1). QGIS reprojettera côté client dans le SCR du projet.
+
+        Args:
+            layer_name_wms: Nom de la couche WMS
+            display_name: Nom affiché dans QGIS
+
+        Returns:
+            tuple: (bool, list) - (succès, liste des couches créées)
+        """
+        WMS_URL = "https://data.geopf.fr/wms-r"
+        crs = "EPSG:3857"
+        uri = f"crs={crs}&format=image/png&layers={layer_name_wms}&styles&url={WMS_URL}"
+
+        QgsMessageLog.logMessage(
+            f"Chargement WMS (EPSG:3857) : {display_name}",
+            "CheminsRuraux", Qgis.Info
+        )
+
+        self._remove_layers_by_name(display_name)
+        wms_layer = QgsRasterLayer(uri, display_name, 'wms')
+
+        if wms_layer.isValid():
+            QgsProject.instance().addMapLayer(wms_layer)
+            QgsMessageLog.logMessage(
+                f"✓ {display_name} chargée avec succès",
+                "CheminsRuraux", Qgis.Success
+            )
+            return True, [wms_layer]
+        else:
+            QgsMessageLog.logMessage(
+                f"✗ Impossible de charger {display_name} : {wms_layer.error().message()}",
+                "CheminsRuraux", Qgis.Warning
+            )
+            return False, []
+
     # URL du service WFS IGN Géoplateforme (constante pour tous les services WFS)
     WFS_IGN_URL = "https://data.geopf.fr/wfs"
 

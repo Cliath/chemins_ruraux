@@ -1,3 +1,7 @@
+# [0.9.77] - 2026-03-01
+### Corrigé
+- **PLAN IGN J+1** : correction du chargement — la couche ne déclarant que `EPSG:3857` dans les capacités WMS IGN, le chargement utilisait un CRS non supporté (`EPSG:2154`) rendant la couche invalide. Ajout de la méthode `load_wms_epsg3857()` dédiée. QGIS reprojecte côté client.
+- Correctif : bloc de chargement `plan_ign_checked` manquant dans `validate_and_load()` (oubli lors de v0.9.76).
 # [0.9.76] - 2026-03-01
 ### Ajouté
 - Case à cocher **PLAN IGN J+1** (`GEOGRAPHICALGRIDSYSTEMS.MAPS.BDUNI.J1`) dans "Plans à charger" : charge le plan topographique IGN en contenu J+1 via le WMS IGN Géoplateforme.
