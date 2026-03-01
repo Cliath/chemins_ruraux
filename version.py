@@ -4,10 +4,16 @@ Version management for Voirie Communale plugin
 """
 
 
-__version__ = "0.9.57"
-__version_info__ = (0, 9, 57)
+__version__ = "0.9.58"
+__version_info__ = (0, 9, 58)
 
 VERSION_HISTORY = {
+    "0.9.58": {
+        "date": "2026-03-01",
+        "changes": [
+            "Déplacé : la case Cadastre est maintenant dans la section 'Plans à charger' plutôt que 'Données à charger'."
+        ]
+    },
     "0.9.57": {
         "date": "2026-03-01",
         "changes": [

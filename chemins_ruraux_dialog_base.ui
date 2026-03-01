@@ -75,16 +75,6 @@
        </widget>
       </item>
       <item>
-       <widget class="QCheckBox" name="chkCadastre">
-        <property name="text">
-         <string>Cadastre (10 couches : parcelles, bâtiments, lieux-dits, etc.) (Licence Ouverte 2.0)</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item>
        <widget class="QCheckBox" name="chkCommune">
         <property name="text">
          <string>Emprise communale (Admin Express IGN) (Licence Ouverte 2.0)</string>
@@ -168,6 +158,16 @@
         </property>
         <property name="styleSheet">
          <string>font-weight: bold; margin-top: 10px;</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="chkCadastre">
+        <property name="text">
+         <string>Cadastre (10 couches : parcelles, bâtiments, lieux-dits, etc.) (Licence Ouverte 2.0)</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
         </property>
        </widget>
       </item>

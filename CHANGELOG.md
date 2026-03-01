@@ -1,3 +1,6 @@
+# [0.9.58] - 2026-03-01
+### Modifié
+- Case **Cadastre** déplacée de la section "Données à charger" vers la section "Plans à charger".
 # [0.9.57] - 2026-03-01
 ### Ajouté
 - Section **Plans à charger** dans la boîte de dialogue (en dessous de "Données à charger").
