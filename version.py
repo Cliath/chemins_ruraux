@@ -4,10 +4,16 @@ Version management for Voirie Communale plugin
 """
 
 
-__version__ = "0.9.53"
-__version_info__ = (0, 9, 53)
+__version__ = "0.9.54"
+__version_info__ = (0, 9, 54)
 
 VERSION_HISTORY = {
+    "0.9.54": {
+        "date": "2026-03-01",
+        "changes": [
+            "Modifié : le zoom après chargement se fait désormais sur l'emprise de la commune plutôt que sur l'emprise combinée de toutes les couches."
+        ]
+    },
     "0.9.53": {
         "date": "2026-03-01",
         "changes": [

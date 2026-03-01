@@ -567,46 +567,27 @@ class CheminsRuraux:
         progress.setValue(steps)
         progress.close()
 
-        # Zoomer sur les couches qui viennent d'être chargées
+        # Zoomer sur l'emprise de la commune
         success_count = sum(1 for _, success in results if success)
         if success_count > 0:
-            combined_extent = None
-
-            # Priorité 1 : emprise des couches vectorielles
-            for layer in loaded_layers:
-                if layer.isValid() and isinstance(layer, QgsVectorLayer):
-                    layer.updateExtents()
-                    layer_extent = layer.extent()
-                    if not layer_extent.isEmpty():
-                        if combined_extent is None:
-                            combined_extent = layer_extent
-                        else:
-                            combined_extent.combineExtentWith(layer_extent)
-
-            # Priorité 2 : emprise des couches raster WMS
-            if combined_extent is None:
-                for layer in loaded_layers:
-                    if layer.isValid() and isinstance(layer, QgsRasterLayer):
-                        layer_extent = layer.extent()
-                        if not layer_extent.isEmpty():
-                            if combined_extent is None:
-                                combined_extent = layer_extent
-                            else:
-                                combined_extent.combineExtentWith(layer_extent)
-
-            if combined_extent is not None and not combined_extent.isEmpty():
-                canvas = self.iface.mapCanvas()
-                project_crs = canvas.mapSettings().destinationCrs()
-                source_crs = next((l.crs() for l in loaded_layers if l.isValid()), None)
-                if source_crs and source_crs != project_crs:
-                    transform = QgsCoordinateTransform(source_crs, project_crs, QgsProject.instance())
-                    combined_extent = transform.transformBoundingBox(combined_extent)
-                combined_extent.scale(1.05)
-                canvas.setExtent(combined_extent)
+            canvas = self.iface.mapCanvas()
+            zoom_extent = None
+            if commune_layer and commune_layer.isValid():
+                commune_layer.updateExtents()
+                zoom_extent = commune_layer.extent()
+                if not zoom_extent.isEmpty():
+                    project_crs = canvas.mapSettings().destinationCrs()
+                    commune_crs = commune_layer.crs()
+                    if commune_crs and commune_crs != project_crs:
+                        transform = QgsCoordinateTransform(commune_crs, project_crs, QgsProject.instance())
+                        zoom_extent = transform.transformBoundingBox(zoom_extent)
+                    zoom_extent.scale(1.05)
+            if zoom_extent and not zoom_extent.isEmpty():
+                canvas.setExtent(zoom_extent)
                 canvas.refresh()
             else:
-                self.iface.mapCanvas().zoomToFullExtent()
-                self.iface.mapCanvas().refresh()
+                canvas.zoomToFullExtent()
+                canvas.refresh()
 
         # Message récapitulatif si plusieurs types de données ont été chargés
         if len(results) > 1:

@@ -1,3 +1,6 @@
+# [0.9.54] - 2026-03-01
+### Modifié
+- Zoom après chargement : utilise désormais l'emprise de la couche commune plutôt que l'emprise combinée de toutes les couches chargées.
 # [0.9.53] - 2026-03-01
 ### Modifié
 - ToDo : remplacement de l'ouverture dans l'éditeur système par une fenêtre QGIS intégrée (`QDialog`) avec éditeur de texte et bouton **Enregistrer**.
