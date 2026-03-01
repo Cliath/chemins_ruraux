@@ -26,6 +26,25 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo.
+
+REM Étape 3 (optionnelle) : Déploiement dans QGIS (push-only, sens unique)
+set QGIS_PLUGINS=%APPDATA%\QGIS\QGIS3\profiles\default\python\plugins\chemins_ruraux
+echo [Optionnel] Déployer dans QGIS ? (O/N)
+set /p DEPLOY="> "
+if /I "%DEPLOY%"=="O" (
+    echo.
+    echo [3/3] Déploiement vers %QGIS_PLUGINS%...
+    robocopy "%~dp0" "%QGIS_PLUGINS%" /MIR /XD .git releases __pycache__ .github .vscode /XF *.zip *.qrc *.ui *.bat *.sh *.py.bak /NFL /NDL /NJH /NJS
+    if %ERRORLEVEL% GTR 7 (
+        echo Erreur lors du déploiement
+    ) else (
+        echo Deploiement termine avec succes ^!
+    )
+) else (
+    echo Déploiement ignoré.
+)
+
+echo.
 echo ========================================
 echo  Terminé !
 echo ========================================
