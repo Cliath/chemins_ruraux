@@ -1,0 +1,1562 @@
+﻿# -*- coding: utf-8 -*-
+"""
+Voirie Communale - Plugin QGIS
+Recensement de la voirie communale (voies communales et chemins ruraux).
+Copyright (C) 2026 Yann Schwarz <yann.schwarz@ign.fr>
+Licence : GNU GPL v2+
+"""
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
+from qgis.PyQt.QtGui import QIcon, QColor
+from qgis.PyQt.QtWidgets import QAction, QMessageBox
+from qgis.core import (QgsProject, QgsVectorLayer, QgsRasterLayer, QgsMessageLog,
+                       Qgis, QgsLayerTreeGroup, QgsCoordinateTransform,
+                       QgsRendererCategory, QgsCategorizedSymbolRenderer,
+                       QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, QgsFeature, QgsField,
+                       QgsGeometry, QgsPointXY,
+                       QgsPalLayerSettings, QgsTextFormat, QgsVectorLayerSimpleLabeling,
+                       QgsTextBufferSettings)
+import re
+import os
+import os.path
+import urllib.parse
+import urllib.request
+import json
+
+# Initialize Qt resources from file resources.py
+from .resources import *
+# Import the code for the dialog
+from .chemins_ruraux_dialog import CheminsRurauxDialog
+# Import version information
+from .version import __version__, get_changelog
+
+
+# Dictionnaire fixe : forme_juridique_abregee → (libellé_complet, couleur_hex)
+# Groupes sémantiques par couleur :
+#   blues foncés  → État / institutions nationales
+#   blues clairs  → Collectivités territoriales
+#   bleus-gris    → Établissements publics
+#   teals         → Intercommunalité / syndicats
+#   verts         → Associations / fondations / mutuelles
+#   oranges/ambre → Agriculture / foncier
+#   rouges        → Sociétés commerciales de capitaux
+#   roses/violets → Sociétés civiles / coopératives
+#   gris          → Divers / non identifié
+MAJIC_FORMES_JURIDIQUES = {
+    # ── État et institutions nationales ──────────────────────────────────────
+    'ETAT':  ("État",                                          '#0d3b6e'),
+    'BDF':   ("Banque de France",                              '#174b82'),
+    'INP':   ("Institut national public",                      '#1e5799'),
+    # ── Collectivités territoriales ──────────────────────────────────────────
+    'DEPT':  ("Département",                                   '#2471a3'),
+    'MET':   ("Métropole",                                     '#2e86c1'),
+    'COM':   ("Commune",                                       '#3498db'),
+    'COMU':  ("Communauté urbaine",                            '#5dade2'),
+    'CCOM':  ("Communauté de communes",                        '#76c4e8'),
+    'COME':  ("Commune (établissement)",                       '#5dade2'),
+    'CCMU':  ("Communauté de communes (fiscalité multiple)",   '#5dade2'),
+    'COLL':  ("Collectivité",                                  '#7fb3d3'),
+    'CTOM':  ("Collectivité d'outre-mer",                      '#aed6f1'),
+    '7510':  ("Commune (code INSEE 7510)",                     '#3498db'),
+    '7520':  ("Commune associée / déléguée (code INSEE 7520)", '#5dade2'),
+    # ── Établissements publics ───────────────────────────────────────────────
+    'EP':    ("Établissement public",                          '#1a5276'),
+    'EPA':   ("Établissement public administratif",            '#1f618d'),
+    'EPIC':  ("Établissement public industriel et commercial", '#2874a6'),
+    'EPLS':  ("Établissement public local spécialisé",        '#2e86c1'),
+    'REGI':  ("Régie",                                        '#3498db'),
+    'CCAS':  ("Centre communal d'action sociale",              '#4fa3d1'),
+    'CIAS':  ("Centre intercommunal d'action sociale",         '#6cb6da'),
+    'HOSP':  ("Hôpital / établissement de santé public",       '#85c1e9'),
+    'SDIS':  ("Service départemental d'incendie et de secours",'#a9cce3'),
+    'MSA':   ("Mutualité sociale agricole",                    '#abebc6'),
+    'ORGI':  ("Organisme de gestion immobilière public",       '#7fb3d3'),
+    'EE':    ("Établissement d'enseignement public",           '#5b9bd5'),
+    'EN':    ("École nationale",                               '#5b9bd5'),
+    'IDE':   ("Établissement de droit public divers",          '#7fb3d3'),
+    # ── Intercommunalité / syndicats ─────────────────────────────────────────
+    'SIVU':  ("Syndicat intercommunal à vocation unique",      '#148f77'),
+    'SIVO':  ("Syndicat intercommunal à vocation multiple",    '#1abc9c'),
+    'SYCO':  ("Syndicat de communes",                         '#1abc9c'),
+    'SYMC':  ("Syndicat mixte de communes",                    '#17a589'),
+    'SYMI':  ("Syndicat mixte",                                '#1abc9c'),
+    'SIH':   ("Syndicat intercommunal hospitalier",            '#76d7c4'),
+    'PETR':  ("Pôle d'équilibre territorial et rural",         '#a2d9ce'),
+    'GIP':   ("Groupement d'intérêt public",                   '#7dcea0'),
+    'GCS':   ("Groupement de coopération sanitaire",           '#a9dfb8'),
+    'GCSP':  ("Groupement de coopération sanitaire privé",     '#a9dfb8'),
+    'CE':    ("Communauté d'établissements / chef d'exploitation", '#27ae60'),
+    'CEP':   ("Communauté d'établissements public",            '#2ecc71'),
+    'CCAM':  ("Chambre consulaire des arts et métiers",        '#82e0aa'),
+    'CCM':   ("Chambre de commerce et de métiers",             '#82e0aa'),
+    'SEM':   ("Société d'économie mixte",                      '#117a65'),
+    'OHLM':  ("Office HLM",                                    '#1d8348'),
+    'OPRO':  ("Office professionnel",                          '#1d8348'),
+    # ── Associations / fondations / mutuelles ────────────────────────────────
+    'ASS':   ("Association",                                   '#229954'),
+    'FON':   ("Fondation",                                     '#52be80'),
+    'MUT':   ("Mutuelle",                                      '#7dcea0'),
+    'ACEE':  ("Association loi 1901 (établissement)",          '#a9dfb8'),
+    'GIE':   ("Groupement d'intérêt économique",               '#27ae60'),
+    'GPAS':  ("Groupement pastoral",                           '#58d68d'),
+    'SSRG':  ("Société sportive à responsabilité garantie",    '#82e0aa'),
+    'SSRS':  ("Société sportive (autre)",                      '#a9dfb8'),
+    'IRC':   ("Institution de retraite complémentaire",        '#7dcea0'),
+    'IRE':   ("Institution de retraite d'entreprise",          '#7dcea0'),
+    '6412':  ("Société d'assurance mutuelle",                  '#5d6d7e'),
+    # ── Agriculture / foncier ────────────────────────────────────────────────
+    'GAEC':  ("Groupement agricole d'exploitation en commun",  '#e67e22'),
+    'EARL':  ("Exploitation agricole à responsabilité limitée",'#f39c12'),
+    'GFA':   ("Groupement foncier agricole",                   '#f0a500'),
+    'GFR':   ("Groupement foncier rural",                      '#f5b041'),
+    'GFO':   ("Groupement foncier",                            '#f8c471'),
+    'GAF':   ("Groupement agri-forestier",                     '#fad7a0'),
+    'SCEA':  ("Société civile d'exploitation agricole",        '#f9e79f'),
+    'SICA':  ("Société d'intérêt collectif agricole",          '#f7dc6f'),
+    'CUMA':  ("Coopérative d'utilisation de matériel agricole",'#f4d03f'),
+    'COAG':  ("Coopérative agricole",                          '#d4ac0d'),
+    'AFR':   ("Association foncière de remembrement",          '#b7950b'),
+    'AFU':   ("Association foncière urbaine",                  '#9a7d0a'),
+    'EXP':   ("Exploitation agricole individuelle",            '#f0b27a'),
+    # ── Sociétés commerciales de capitaux ────────────────────────────────────
+    'SA':    ("Société anonyme",                               '#c0392b'),
+    'SAM':   ("Société anonyme mutualiste",                    '#e74c3c'),
+    'SAFR':  ("Société anonyme fermière rurale",               '#ec7063'),
+    'SARL':  ("Société à responsabilité limitée",              '#e74c3c'),
+    'SAS':   ("Société par actions simplifiée",                '#ec7063'),
+    'SNC':   ("Société en nom collectif",                      '#f1948a'),
+    'SCA':   ("Société en commandite par actions",             '#cd6155'),
+    'SE':    ("Société européenne",                            '#a93226'),
+    'SLRL':  ("Société libre à responsabilité limitée",        '#e74c3c'),
+    'STE':   ("Société (autre)",                               '#f1948a'),
+    # ── Sociétés civiles / coopératives ──────────────────────────────────────
+    'SC':    ("Société civile",                                '#8e44ad'),
+    'SCI':   ("Société civile immobilière",                    '#9b59b6'),
+    'SCM':   ("Société civile de moyens",                      '#a569bd'),
+    'SCCP':  ("Société civile de construction-vente",          '#af7ac5'),
+    'SCOP':  ("Société coopérative ouvrière de production",    '#7d3c98'),
+    'SCPI':  ("Société civile de placement immobilier",        '#6c3483'),
+    'SCOM':  ("Société coopérative et mutualiste",             '#5b2c6f'),
+    # ── Divers identifiés ──────────────────────────────────────────────────────
+    'CSBI':  ("Caisse scolaire de bienfaisance",                '#717d7e'),
+    'DISU':  ("Divers (usage inconnu)",                         '#717d7e'),
+    'PM':    ("Personne morale (divers)",                       '#717d7e'),
+    'RAC':   ("Régie autonome communale",                       '#717d7e'),
+    'RV':    ("Résidence / divers",                             '#717d7e'),
+    'AUDA':  ("Autre administration",                           '#717d7e'),
+    'AUDP':  ("Autre de droit privé",                           '#717d7e'),
+    'AUEP':  ("Autre entité publique",                          '#717d7e'),
+    'AUPE':  ("Autre personne étrangère",                       '#717d7e'),
+    'AUPM':  ("Autre personne morale",                          '#717d7e'),
+    'AURS':  ("Autre à régime spécial",                         '#717d7e'),
+    'AUTA':  ("Autre titre administratif",                      '#717d7e'),
+    'AUTC':  ("Autre titre collectif",                          '#717d7e'),
+    'INR':   ("Institut national de recherche",                 '#717d7e'),
+}
+# Couleur par défaut pour les codes non répertoriés
+_MAJIC_COLOR_UNKNOWN = '#95a5a6'
+
+# Groupes et couleurs exacts de l'application Koumoul
+# Source : configuration de https://koumoul.com/data-fair/app/carte-des-parcelles-des-personnes-morales-majic
+# Le champ groupe_personne est un entier (0-9)
+MAJIC_GROUPES = {
+    0: ("Personnes morales non remarquables", "#FF0000"),
+    1: ("État",                               "#F79F11"),
+    2: ("Région",                             "#068031"),
+    3: ("Département",                        "#6CF163"),
+    4: ("Commune",                            "#45C6E6"),
+    5: ("Office HLM",                         "#F551E4"),
+    6: ("Sociétés d'économie mixte",          "#FFFA00"),
+    7: ("Copropriétaires",                    "#04147C"),
+    8: ("Associés",                           "#6F2002"),
+    9: ("Établissements publics ou organismes associés", "#0521DB"),
+}
+_MAJIC_GROUPE_DEFAULT_COLOR = "#A337F5"
+
+
+class CheminsRuraux:
+    """QGIS Plugin Implementation."""
+
+    def __init__(self, iface):
+        """Constructor.
+
+        :param iface: An interface instance that will be passed to this class
+            which provides the hook by which you can manipulate the QGIS
+            application at run time.
+        :type iface: QgsInterface
+        """
+        # Save reference to the QGIS interface
+        self.iface = iface
+
+        # Log plugin version
+        QgsMessageLog.logMessage(
+            f"Voirie Communale v{__version__} charg\u00e9",
+            "CheminsRuraux",
+            Qgis.Info
+        )
+        # initialize plugin directory
+        self.plugin_dir = os.path.dirname(__file__)
+        # initialize locale
+        locale = QSettings().value('locale/userLocale')[0:2]
+        locale_path = os.path.join(
+            self.plugin_dir,
+            'i18n',
+            'CheminsRuraux_{}.qm'.format(locale))
+
+        if os.path.exists(locale_path):
+            self.translator = QTranslator()
+            self.translator.load(locale_path)
+            QCoreApplication.installTranslator(self.translator)
+
+        # Declare instance attributes
+        self.actions = []
+        self.menu = self.tr(u'&Voirie Communale')
+
+        # Check if plugin was started the first time in current QGIS session
+        # Must be set in initGui() to survive plugin reloads
+        self.first_start = None
+
+    # noinspection PyMethodMayBeStatic
+    def tr(self, message):
+        """Get the translation for a string using Qt translation API.
+
+        We implement this ourselves since we do not inherit QObject.
+
+        :param message: String for translation.
+        :type message: str, QString
+
+        :returns: Translated version of message.
+        :rtype: QString
+        """
+        # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
+        return QCoreApplication.translate('CheminsRuraux', message)
+
+    def add_action(
+        self,
+        icon_path,
+        text,
+        callback,
+        enabled_flag=True,
+        add_to_menu=True,
+        add_to_toolbar=True,
+        status_tip=None,
+        whats_this=None,
+        parent=None):
+        """Add a toolbar icon to the toolbar.
+
+        :param icon_path: Path to the icon for this action. Can be a resource
+            path (e.g. ':/plugins/foo/bar.png') or a normal file system path.
+        :type icon_path: str
+
+        :param text: Text that should be shown in menu items for this action.
+        :type text: str
+
+        :param callback: Function to be called when the action is triggered.
+        :type callback: function
+
+        :param enabled_flag: A flag indicating if the action should be enabled
+            by default. Defaults to True.
+        :type enabled_flag: bool
+
+        :param add_to_menu: Flag indicating whether the action should also
+            be added to the menu. Defaults to True.
+        :type add_to_menu: bool
+
+        :param add_to_toolbar: Flag indicating whether the action should also
+            be added to the toolbar. Defaults to True.
+        :type add_to_toolbar: bool
+
+        :param status_tip: Optional text to show in a popup when mouse pointer
+            hovers over the action.
+        :type status_tip: str
+
+        :param parent: Parent widget for the new action. Defaults None.
+        :type parent: QWidget
+
+        :param whats_this: Optional text to show in the status bar when the
+            mouse pointer hovers over the action.
+
+        :returns: The action that was created. Note that the action is also
+            added to self.actions list.
+        :rtype: QAction
+        """
+
+        icon = QIcon(icon_path)
+        action = QAction(icon, text, parent)
+        action.triggered.connect(callback)
+        action.setEnabled(enabled_flag)
+
+        if status_tip is not None:
+            action.setStatusTip(status_tip)
+
+        if whats_this is not None:
+            action.setWhatsThis(whats_this)
+
+        if add_to_toolbar:
+            # Adds plugin icon to Plugins toolbar
+            self.iface.addToolBarIcon(action)
+
+        if add_to_menu:
+            self.iface.addPluginToVectorMenu(
+                self.menu,
+                action)
+
+        self.actions.append(action)
+
+        return action
+
+    def initGui(self):
+        """Create the menu entries and toolbar icons inside the QGIS GUI."""
+
+        icon_path = ':/plugins/chemins_ruraux/icon.png'
+        self.add_action(
+            icon_path,
+            text=self.tr(u'Voirie Communale - Recensement'),
+            callback=self.run,
+            parent=self.iface.mainWindow())
+
+        self.add_action(
+            icon_path,
+            text=self.tr(u'\u00c0 propos'),
+            callback=self.show_about,
+            add_to_toolbar=False,
+            parent=self.iface.mainWindow())
+
+        # will be set False in run()
+        self.first_start = True
+
+    def unload(self):
+        """Removes the plugin menu item and icon from QGIS GUI."""
+        for action in self.actions:
+            self.iface.removePluginVectorMenu(
+                self.tr(u'&Voirie Communale'),
+                action)
+            self.iface.removeToolBarIcon(action)
+
+    def show_about(self):
+        """Affiche la boîte de dialogue \u00c0 propos."""
+        msg = QMessageBox(self.iface.mainWindow())
+        msg.setWindowTitle(self.tr("\u00c0 propos - Voirie Communale"))
+        msg.setIconPixmap(QIcon(':/plugins/chemins_ruraux/icon.png').pixmap(64, 64))
+        msg.setText(
+            f"<b>Voirie Communale</b> v{__version__}<br><br>"
+            "Plugin QGIS pour le recensement de la voirie communale<br>"
+            "(voies communales et chemins ruraux).<br><br>"
+            "<b>Auteur :</b> Yann Schwarz &lt;yann.schwarz@ign.fr&gt;<br>"
+            "<b>Licence :</b> GNU GPL v2+<br>"
+            "<b>Source :</b> <a href='https://github.com/Cliath/chemins_ruraux'>"
+            "github.com/Cliath/chemins_ruraux</a>"
+        )
+        msg.setTextFormat(1)  # Qt::RichText
+        msg.exec_()
+
+    def validate_and_load(self):
+        """Valide le code INSEE et charge les données selon le bouton radio sélectionné"""
+        
+        # Récupérer le code INSEE saisi par l'utilisateur
+        code_insee = self.dlg.txtCodeInsee.text().strip().upper()
+        
+        # Validation du code INSEE français
+        # Format attendu : 2 caractères (département) + 3 chiffres (commune)
+        # Départements métropole : 01-19, 2A, 2B, 21-95
+        # DOM-TOM : 971-976 (3 chiffres + 2 chiffres)
+        insee_pattern = re.compile(
+            r'^('
+            r'0[1-9]\d{3}|'           # 01-09 + 3 chiffres
+            r'[1-8]\d{4}|'            # 10-89 + 3 chiffres  
+            r'9[0-5]\d{3}|'           # 90-95 + 3 chiffres
+            r'2[AB]\d{3}|'            # 2A/2B (Corse) + 3 chiffres
+            r'97[1-6]\d{2}|'          # 971-976 (DOM) + 2 chiffres
+            r'98[4-8]\d{2}'           # 984-988 (TOM) + 2 chiffres
+            r')$'
+        )
+        
+        if not code_insee:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Code INSEE manquant",
+                "Veuillez saisir le code INSEE de la commune (5 chiffres).\n"
+                "Exemple : 75056 pour Paris, 13055 pour Marseille, 2A004 pour Ajaccio."
+            )
+            return
+        
+        if not insee_pattern.match(code_insee):
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Code INSEE invalide",
+                f"Le code INSEE '{code_insee}' est invalide.\n\n"
+                "Format attendu :\n"
+                "- Métropole : 2 chiffres (département) + 3 chiffres (commune)\n"
+                "  Exemples : 75056 (Paris), 13055 (Marseille), 69123 (Lyon)\n"
+                "- Corse : 2A ou 2B + 3 chiffres\n"
+                "  Exemple : 2A004 (Ajaccio)\n"
+                "- DOM-TOM : 971-976 ou 984-988 + 2 chiffres\n"
+                "  Exemples : 97105 (Basse-Terre), 98411 (Nouméa)"
+            )
+            return
+        
+        # Vérifier quelles données charger
+        cadastre_checked = self.dlg.chkCadastre.isChecked()
+        commune_checked = self.dlg.chkCommune.isChecked()
+        ban_checked = self.dlg.chkBAN.isChecked()
+        voirie_checked = self.dlg.chkVoirie.isChecked()
+        voirie_dep_checked = self.dlg.chkVoirieDep.isChecked()
+        osm_routes_checked = self.dlg.chkOsmRoutes.isChecked()
+        bdtopo_routesnom_checked = hasattr(self.dlg, 'chkBDTopoRoutesNom') and self.dlg.chkBDTopoRoutesNom.isChecked()
+        majic_checked = self.dlg.chkMajic.isChecked()
+        
+        if not cadastre_checked and not commune_checked and not ban_checked and not voirie_checked and not voirie_dep_checked and not osm_routes_checked and not bdtopo_routesnom_checked and not majic_checked:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Sélection requise",
+                "Veuillez cocher au moins un type de données à charger."
+            )
+            return
+        
+        # Charger les données sélectionnées
+        results = []
+        loaded_layers = []
+        commune_layer = None
+        
+        if cadastre_checked:
+            cadastre_success, cadastre_layers = self.load_cadastre_wms(code_insee)
+            results.append(('Cadastre', cadastre_success))
+            loaded_layers.extend(cadastre_layers)
+        
+        if commune_checked:
+            commune_success, commune_layer = self.load_commune_wfs(code_insee)
+            results.append(('Emprise communale', commune_success))
+            if commune_layer:
+                loaded_layers.append(commune_layer)
+        
+        # Récupérer l'emprise de la commune pour filtrer les voiries
+        commune_bbox = None
+        if voirie_checked or voirie_dep_checked or osm_routes_checked or bdtopo_routesnom_checked:
+            # Chercher d'abord si une commune existe déjà dans le projet
+            if commune_layer is None:
+                for layer_id, layer in QgsProject.instance().mapLayers().items():
+                    if isinstance(layer, QgsVectorLayer) and layer.name().startswith(f"Commune {code_insee}"):
+                        commune_layer = layer
+                        QgsMessageLog.logMessage(
+                            f"Couche commune existante trouvée : {layer.name()}",
+                            "CheminsRuraux",
+                            Qgis.Info
+                        )
+                        break
+            
+            # Charger la commune si toujours pas trouvée
+            if commune_layer is None:
+                QgsMessageLog.logMessage(
+                    f"Chargement de la commune {code_insee} pour obtenir le BBOX des voiries",
+                    "CheminsRuraux",
+                    Qgis.Info
+                )
+                _, commune_layer = self.load_commune_wfs(code_insee)
+            
+            # Extraire le BBOX de la commune
+            if commune_layer and commune_layer.isValid():
+                extent = commune_layer.extent()
+                commune_bbox = (extent.xMinimum(), extent.yMinimum(), extent.xMaximum(), extent.yMaximum())
+        
+        if ban_checked:
+            ban_success, ban_layer = self.load_ban_wfs(code_insee)
+            results.append(('Adresses BAN', ban_success))
+            if ban_layer:
+                loaded_layers.append(ban_layer)
+        
+        if voirie_checked:
+            voirie_success, voirie_layer = self.load_voirie_wfs(code_insee, commune_bbox)
+            results.append(('Voirie communale', voirie_success))
+            if voirie_layer:
+                loaded_layers.append(voirie_layer)
+        
+        if voirie_dep_checked:
+            voirie_dep_success, voirie_dep_layer = self.load_voirie_dep_wfs(code_insee, commune_bbox)
+            results.append(('Voirie départementale', voirie_dep_success))
+            if voirie_dep_layer:
+                loaded_layers.append(voirie_dep_layer)
+
+        if osm_routes_checked:
+            osm_success, osm_layer = self.load_osm_roads(code_insee, commune_bbox)
+            results.append(('Routes OSM', osm_success))
+            if osm_layer:
+                loaded_layers.append(osm_layer)
+
+
+
+        if bdtopo_routesnom_checked:
+            bdtopo_routesnom_success, bdtopo_routesnom_layer = self.load_bdtopo_routesnom_wfs(code_insee, commune_bbox)
+            results.append(('BD TOPO Routes numérotées ou nommées', bdtopo_routesnom_success))
+            if bdtopo_routesnom_layer:
+                loaded_layers.append(bdtopo_routesnom_layer)
+
+        if majic_checked:
+            majic_success, majic_layer = self.load_majic_parcelles(code_insee)
+            results.append(('Parcelles MAJIC', majic_success))
+            if majic_layer:
+                loaded_layers.append(majic_layer)
+            elif not majic_success:
+                QMessageBox.warning(
+                    self.iface.mainWindow(),
+                    "Erreur MAJIC",
+                    "Impossible de charger les parcelles MAJIC pour la commune sélectionnée.\n\n"
+                    "Vérifiez la connexion internet, le code INSEE, ou consultez le journal des messages pour plus de détails."
+                )
+
+        # Zoomer sur les couches qui viennent d'être chargées
+        success_count = sum(1 for _, success in results if success)
+        if success_count > 0:
+            combined_extent = None
+
+            # Priorité 1 : emprise des couches vectorielles
+            for layer in loaded_layers:
+                if layer.isValid() and isinstance(layer, QgsVectorLayer):
+                    layer.updateExtents()
+                    layer_extent = layer.extent()
+                    if not layer_extent.isEmpty():
+                        combined_extent = layer_extent if combined_extent is None else combined_extent.__ior__(layer_extent) or combined_extent
+
+            # Priorité 2 : emprise des couches raster WMS
+            if combined_extent is None:
+                for layer in loaded_layers:
+                    if layer.isValid() and isinstance(layer, QgsRasterLayer):
+                        layer_extent = layer.extent()
+                        if not layer_extent.isEmpty():
+                            combined_extent = layer_extent if combined_extent is None else combined_extent.__ior__(layer_extent) or combined_extent
+
+            if combined_extent is not None and not combined_extent.isEmpty():
+                canvas = self.iface.mapCanvas()
+                project_crs = canvas.mapSettings().destinationCrs()
+                source_crs = next((l.crs() for l in loaded_layers if l.isValid()), None)
+                if source_crs and source_crs != project_crs:
+                    transform = QgsCoordinateTransform(source_crs, project_crs, QgsProject.instance())
+                    combined_extent = transform.transformBoundingBox(combined_extent)
+                combined_extent.scale(1.05)
+                canvas.setExtent(combined_extent)
+                canvas.refresh()
+            else:
+                self.iface.mapCanvas().zoomToFullExtent()
+                self.iface.mapCanvas().refresh()
+
+        # Message récapitulatif si plusieurs types de données ont été chargés
+        if len(results) > 1:
+            if success_count == len(results):
+                QMessageBox.information(
+                    self.iface.mainWindow(),
+                    "Chargement terminé",
+                    f"Toutes les données ont été chargées avec succès pour le code INSEE {code_insee}."
+                )
+            elif success_count > 0:
+                success_types = [name for name, success in results if success]
+                failed_types = [name for name, success in results if not success]
+                QMessageBox.warning(
+                    self.iface.mainWindow(),
+                    "Chargement partiel",
+                    f"Chargé avec succès : {', '.join(success_types)}\n"
+                    f"Échec : {', '.join(failed_types)}\n\n"
+                    "Consultez le journal des messages pour plus de détails."
+                )
+
+        # TOUJOURS ramener le dialogue au premier plan à la fin
+        self.dlg.raise_()
+        self.dlg.activateWindow()
+
+    def load_bdtopo_routesnom_wfs(self, code_insee, bbox=None):
+        """Charge les routes numérotées ou nommées depuis le WFS BD TOPO IGN Géoplateforme.
+
+        Args:
+            code_insee: Code INSEE de la commune
+            bbox: Emprise de la commune (xmin, ymin, xmax, ymax) en EPSG:4326
+
+        Returns:
+            tuple: (bool, QgsVectorLayer ou None)
+        """
+        if not bbox:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Emprise communale manquante",
+                "Impossible de calculer le BBOX pour les routes numérotées ou nommées BD TOPO.\n"
+                "Chargez l'emprise communale ou vérifiez le code INSEE."
+            )
+            return False, None
+
+        success, layer = self.load_wfs_layer(
+            typename="BDTOPO_V3:route_numerotee_ou_nommee",
+            layer_name=f"BD TOPO Routes numérotées ou nommées {code_insee}",
+            crs="EPSG:4326",
+            bbox=bbox,
+            geom_field="geometrie"
+        )
+
+        # Appliquer une symbologie catégorisée sur 'type_de_route'
+        if layer and layer.isValid():
+            from qgis.core import QgsCategorizedSymbolRenderer, QgsRendererCategory, QgsSymbol
+            categories = []
+            # Exemple de catégories (adapter selon les valeurs réelles du champ type_de_route)
+            color_map = {
+                'Autoroute': '#FF0000',
+                'Nationale': '#0000FF',
+                'Départementale': '#00AA00',
+                'Route intercommunale': '#FF69B4',
+                'Voie communale': '#FFD700',
+                'Chemin rural': '#A0522D'
+            }
+            for route_type, color in color_map.items():
+                symbol = QgsSymbol.defaultSymbol(layer.geometryType())
+                symbol.setColor(QColor(color))
+                category = QgsRendererCategory(route_type, symbol, route_type)
+                categories.append(category)
+            renderer = QgsCategorizedSymbolRenderer('type_de_route', categories)
+            layer.setRenderer(renderer)
+            layer.triggerRepaint()
+
+        if not any([
+            self.dlg.chkCadastre.isChecked(),
+            self.dlg.chkCommune.isChecked(),
+            self.dlg.chkBAN.isChecked(),
+            self.dlg.chkVoirie.isChecked(),
+            self.dlg.chkVoirieDep.isChecked(),
+            self.dlg.chkOsmRoutes.isChecked(),
+        ]):
+            if success:
+                QMessageBox.information(
+                    self.iface.mainWindow(),
+                    "BD TOPO Routes numérotées ou nommées chargées",
+                    f"Les routes numérotées ou nommées BD TOPO de la commune {code_insee} ont été chargées avec succès."
+                )
+            else:
+                QMessageBox.warning(
+                    self.iface.mainWindow(),
+                    "BD TOPO Routes numérotées ou nommées non disponible",
+                    f"Impossible de charger les routes numérotées ou nommées BD TOPO pour le code INSEE {code_insee}.\n\n"
+                    "Consultez le journal des messages pour plus de détails."
+                )
+
+        return success, layer
+
+    def load_cadastre_wms(self, code_insee):
+        """Charge les couches cadastrales WMS pour le code INSEE donné
+        
+        Returns:
+            tuple: (bool, list) - (succès, liste des couches chargées)
+        """
+        
+        # URL du service WMS INSPIRE du cadastre (DGFiP)
+        wms_url = f"https://inspire.cadastre.gouv.fr/scpc/{code_insee}.wms"
+        
+        # Configuration des paramètres WMS communs
+        crs = "EPSG:2154"  # Lambert 93
+        format_type = "image/png"
+        
+        # Liste pour stocker les couches créées
+        created_layers = []
+        
+        # Toutes les couches disponibles sur le service INSPIRE
+        layers_to_load = [
+            {'name': 'CP.CadastralParcel', 'title': 'Parcelles cadastrales'},
+            {'name': 'BU.Building', 'title': 'Bâtiments'},
+            {'name': 'SUBFISCAL', 'title': 'Subdivisions fiscales'},
+            {'name': 'LIEUDIT', 'title': 'Lieux-dits'},
+            {'name': 'AMORCES_CAD', 'title': 'Amorces cadastrales'},
+            {'name': 'CLOTURE', 'title': 'Clôtures'},
+            {'name': 'DETAIL_TOPO', 'title': 'Détails topographiques'},
+            {'name': 'HYDRO', 'title': 'Hydrographie'},
+            {'name': 'VOIE_COMMUNICATION', 'title': 'Voies de communication'},
+            {'name': 'BORNE_REPERE', 'title': 'Bornes et repères'}
+        ]
+        
+        # Créer un groupe dans l'arbre des couches
+        root = QgsProject.instance().layerTreeRoot()
+        group_name = f"Cadastre - {code_insee}"
+        cadastre_group = root.addGroup(group_name)
+        
+        loaded_count = 0
+        errors = []
+        
+        for layer_info in layers_to_load:
+            # Construction de l'URI WMS
+            uri = f"crs={crs}&format={format_type}&layers={layer_info['name']}&styles&url={wms_url}"
+            
+            QgsMessageLog.logMessage(
+                f"Tentative de chargement : {layer_info['title']}",
+                "CheminsRuraux",
+                Qgis.Info
+            )
+            QgsMessageLog.logMessage(
+                f"URI WMS : {uri}",
+                "CheminsRuraux",
+                Qgis.Info
+            )
+            
+            # Créer la couche WMS
+            wms_layer = QgsRasterLayer(uri, layer_info['title'], 'wms')
+            
+            if wms_layer.isValid():
+                # Ajouter la couche au projet sans l'afficher immédiatement
+                QgsProject.instance().addMapLayer(wms_layer, False)
+                # Ajouter la couche au groupe
+                cadastre_group.addLayer(wms_layer)
+                created_layers.append(wms_layer)
+                loaded_count += 1
+                QgsMessageLog.logMessage(
+                    f"✓ Couche {layer_info['title']} chargée avec succès",
+                    "CheminsRuraux",
+                    Qgis.Success
+                )
+            else:
+                error_msg = f"Échec du chargement de {layer_info['title']}"
+                errors.append(layer_info['title'])
+                QgsMessageLog.logMessage(
+                    f"✗ {error_msg}",
+                    "CheminsRuraux",
+                    Qgis.Warning
+                )
+                QgsMessageLog.logMessage(
+                    f"Erreur détaillée : {wms_layer.error().message()}",
+                    "CheminsRuraux",
+                    Qgis.Warning
+                )
+        
+        if loaded_count > 0:
+            # Si c'est le seul type de données chargé, afficher un message
+            if not self.dlg.chkCommune.isChecked() and not self.dlg.chkBAN.isChecked():
+                message = f"{loaded_count} couche(s) cadastrale(s) chargée(s) avec succès."
+                if errors:
+                    message += f"\n\nCouches en erreur : {', '.join(errors)}"
+                    message += "\n\nConsultez le journal des messages (Vue → Panneaux → Journal des messages) pour plus de détails."
+                QMessageBox.information(
+                    self.iface.mainWindow(),
+                    "Cadastre chargé",
+                    message
+                )
+            return True, created_layers
+        else:
+            # Si c'est le seul type de données chargé, afficher un message d'erreur
+            if not self.dlg.chkCommune.isChecked() and not self.dlg.chkBAN.isChecked():
+                error_details = "Aucune couche n'a pu être chargée.\n\n"
+                error_details += f"Code INSEE : {code_insee}\n"
+                error_details += f"URL : {wms_url}\n\n"
+                error_details += "Vérifiez :\n"
+                error_details += "1. Le code INSEE est correct\n"
+                error_details += "2. Votre connexion internet\n"
+                error_details += "3. Le journal des messages pour plus de détails"
+                QMessageBox.critical(
+                    self.iface.mainWindow(),
+                    "Erreur de chargement",
+                    error_details
+                )
+            return False, []
+    
+    # URL du service WFS IGN Géoplateforme (constante pour tous les services WFS)
+    WFS_IGN_URL = "https://data.geopf.fr/wfs"
+    
+    def load_wfs_layer(self, typename, layer_name, code_insee=None, crs="EPSG:4326",
+                       bbox=None, style_callback=None, geom_field="geom"):
+        """Méthode générique pour charger une couche WFS depuis l'IGN Géoplateforme.
+
+        Args:
+            typename: Nom de la couche WFS (ex: LIMITES_ADMINISTRATIVES_EXPRESS.LATEST:commune)
+            layer_name: Nom à donner à la couche dans QGIS
+            code_insee: Code INSEE pour le filtre CQL (optionnel)
+            crs: Système de coordonnées (défaut: EPSG:4326)
+            bbox: Emprise pour filtre BBOX (tuple: xmin, ymin, xmax, ymax) (optionnel)
+            style_callback: Fonction optionnelle à appeler pour styliser la couche
+            geom_field: Nom du champ géométrie pour le filtre BBOX (défaut: "geom")
+
+        Returns:
+            tuple: (bool, QgsVectorLayer ou None) - (succès, couche chargée)
+        """
+        if bbox:
+            xmin, ymin, xmax, ymax = bbox
+            uri_string = (
+                f"{self.WFS_IGN_URL}?"
+                f"service=WFS&version=2.0.0&request=GetFeature&"
+                f"typename={typename}&srsname={crs}&"
+                f"CQL_FILTER=BBOX({geom_field},{xmin},{ymin},{xmax},{ymax},'{crs}')"
+            )
+        else:
+            uri_string = (
+                f"{self.WFS_IGN_URL}?"
+                f"service=WFS&version=2.0.0&request=GetFeature&"
+                f"typename={typename}&srsname={crs}"
+            )
+            if code_insee:
+                uri_string += f"&CQL_FILTER=code_insee='{code_insee}'"
+
+        QgsMessageLog.logMessage(f"Chargement WFS: {layer_name}", "CheminsRuraux", Qgis.Info)
+
+        # Créer la couche WFS
+        wfs_layer = QgsVectorLayer(uri_string, layer_name, "WFS")
+        
+        if wfs_layer.isValid() and wfs_layer.featureCount() > 0:
+            QgsProject.instance().addMapLayer(wfs_layer)
+            
+            # Appliquer le style personnalisé si fourni
+            if style_callback:
+                style_callback(wfs_layer)
+            
+            QgsMessageLog.logMessage(
+                f"✓ {layer_name} chargée ({wfs_layer.featureCount()} entité(s))",
+                "CheminsRuraux",
+                Qgis.Success
+            )
+            
+            return True, wfs_layer
+        else:
+            QgsMessageLog.logMessage(
+                f"✗ Impossible de charger {layer_name} pour {code_insee}",
+                "CheminsRuraux",
+                Qgis.Warning
+            )
+            if wfs_layer.isValid():
+                QgsMessageLog.logMessage(
+                    f"La couche existe mais aucune entité trouvée (featureCount = 0)",
+                    "CheminsRuraux",
+                    Qgis.Warning
+                )
+            else:
+                QgsMessageLog.logMessage(
+                    f"Erreur WFS : {wfs_layer.error().message()}",
+                    "CheminsRuraux",
+                    Qgis.Warning
+                )
+            
+            return False, None
+    
+    def load_commune_wfs(self, code_insee):
+        """Charge l'emprise de la commune depuis le WFS Admin Express IGN
+        
+        Returns:
+            tuple: (bool, QgsVectorLayer ou None) - (succès, couche chargée)
+        """
+        success, layer = self.load_wfs_layer(
+            typename="LIMITES_ADMINISTRATIVES_EXPRESS.LATEST:commune",
+            layer_name=f"Commune {code_insee}",
+            code_insee=code_insee,
+            crs="EPSG:4326"
+        )
+        
+        # Afficher le message seulement si c'est le seul chargement
+        if not self.dlg.chkCadastre.isChecked() and not self.dlg.chkBAN.isChecked():
+            if success:
+                QMessageBox.information(
+                    self.iface.mainWindow(),
+                    "Emprise communale chargée",
+                    f"L'emprise de la commune {code_insee} a été chargée avec succès."
+                )
+            else:
+                QMessageBox.warning(
+                    self.iface.mainWindow(),
+                    "Emprise communale non disponible",
+                    f"Impossible de charger l'emprise pour le code INSEE {code_insee}.\n\n"
+                    "Consultez le journal des messages pour plus de détails."
+                )
+        
+        return success, layer
+    
+    def apply_ban_style(self, layer):
+        """Applique un style différencié à la couche BAN selon le type de voie
+        
+        Args:
+            layer: La couche QgsVectorLayer BAN à styliser
+        """
+        
+        # Créer une expression qui catégorise les voies
+        # Recherche dans le champ nom_voie les mots-clés
+        field_name = 'nom_voie'
+        
+        # Vérifier que le champ existe
+        if layer.fields().indexOf(field_name) == -1:
+            QgsMessageLog.logMessage(
+                f"Le champ '{field_name}' n'existe pas dans la couche BAN",
+                "CheminsRuraux",
+                Qgis.Warning
+            )
+            return
+        
+        # Définir les catégories avec expressions regex QGIS
+        # regexp_match retourne la position (>0) si trouvé, 0 sinon
+        expression = f"""
+        CASE 
+            WHEN regexp_match("{field_name}", '(?i)(che(?:min)?|sen(?:tier)?) rural|\\\\bC\\\\.?R\\\\.?\\\\b') > 0 THEN 'Chemin rural'
+            WHEN regexp_match("{field_name}", '(?i)(voi(?:e)?) (com(?:munale)?)|\\\\bV\\\\.?C\\\\.?\\\\b') > 0 THEN 'Voie communale'
+            ELSE 'Autre'
+        END
+        """
+        
+        # Créer les symboles pour chaque catégorie
+        categories = []
+        
+        # Chemin rural - Marron/Orange
+        symbol_chemin = QgsMarkerSymbol.createSimple({
+            'name': 'circle',
+            'color': '#D2691E',  # Chocolat
+            'size': '3',
+            'outline_color': '#8B4513',  # Saddle brown
+            'outline_width': '0.5'
+        })
+        categories.append(QgsRendererCategory('Chemin rural', symbol_chemin, 'Chemin rural'))
+        
+        # Voie communale - Bleu
+        symbol_voie = QgsMarkerSymbol.createSimple({
+            'name': 'circle',
+            'color': '#4169E1',  # Royal blue
+            'size': '3',
+            'outline_color': '#191970',  # Midnight blue
+            'outline_width': '0.5'
+        })
+        categories.append(QgsRendererCategory('Voie communale', symbol_voie, 'Voie communale'))
+        
+        # Autre - Gris
+        symbol_autre = QgsMarkerSymbol.createSimple({
+            'name': 'circle',
+            'color': '#808080',  # Gris
+            'size': '2.5',
+            'outline_color': '#505050',
+            'outline_width': '0.5'
+        })
+        cat_autre = QgsRendererCategory('Autre', symbol_autre, 'Autre')
+        cat_autre.setRenderState(False)  # Désactiver par défaut
+        categories.append(cat_autre)
+        
+        # Créer et appliquer le renderer catégorisé
+        renderer = QgsCategorizedSymbolRenderer(expression, categories)
+        layer.setRenderer(renderer)
+        
+        # Configurer les étiquettes avec le nom de la voie
+        # Afficher uniquement pour les chemins ruraux et voies communales
+        
+        label_settings = QgsPalLayerSettings()
+        label_settings.isExpression = True
+        label_settings.fieldName = (
+            f"CASE "
+            f"WHEN regexp_match(\"{field_name}\", '(?i)(che(?:min)?|sen(?:tier)?) rural|\\\\bC\\\\.?R\\\\.?\\\\b') > 0 THEN \"{field_name}\" "
+            f"WHEN regexp_match(\"{field_name}\", '(?i)(voi(?:e)?) (com(?:munale)?)|\\\\bV\\\\.?C\\\\.?\\\\b') > 0 THEN \"{field_name}\" "
+            f"ELSE '' END"
+        )
+        label_settings.enabled = True
+        label_settings.placement = QgsPalLayerSettings.AroundPoint
+        
+        # Format du texte
+        text_format = QgsTextFormat()
+        text_format.setSize(8)
+        text_format.setColor(QColor(0, 0, 0))  # Noir
+        
+        # Ajouter un buffer blanc autour du texte pour meilleure lisibilité
+        buffer = QgsTextBufferSettings()
+        buffer.setEnabled(True)
+        buffer.setSize(0.5)
+        buffer.setColor(QColor(255, 255, 255))  # Blanc
+        text_format.setBuffer(buffer)
+        
+        label_settings.setFormat(text_format)
+        
+        # Appliquer les étiquettes à la couche
+        labeling = QgsVectorLayerSimpleLabeling(label_settings)
+        layer.setLabeling(labeling)
+        layer.setLabelsEnabled(True)
+        
+        layer.triggerRepaint()
+        
+        QgsMessageLog.logMessage(
+            "Style différencié et étiquettes appliqués à la couche BAN (Chemins ruraux / Voies communales)",
+            "CheminsRuraux",
+            Qgis.Success
+        )
+    
+    def load_ban_wfs(self, code_insee):
+        """Charge les adresses de la Base Adresse Nationale (BAN)
+        
+        Returns:
+            tuple: (bool, QgsVectorLayer ou None) - (succès, couche chargée)
+        """
+        
+        # Charger les adresses BAN sans message d'attente
+        success, layer = self.load_wfs_layer(
+            typename="BAN.DATA.GOUV:ban",
+            layer_name=f"Adresses BAN {code_insee}",
+            code_insee=code_insee,
+            crs="EPSG:4326",
+            style_callback=self.apply_ban_style
+        )
+        
+        # Afficher le message seulement si c'est le seul chargement
+        if not self.dlg.chkCadastre.isChecked() and not self.dlg.chkCommune.isChecked():
+            if success:
+                QMessageBox.information(
+                    self.iface.mainWindow(),
+                    "Adresses BAN chargées",
+                    f"{layer.featureCount()} adresse(s) de la commune {code_insee} ont été chargées avec succès."
+                )
+            else:
+                QMessageBox.warning(
+                    self.iface.mainWindow(),
+                    "Adresses BAN non disponibles",
+                    f"Impossible de charger les adresses pour le code INSEE {code_insee}.\n\n"
+                    "Consultez le journal des messages pour plus de détails."
+                )
+        
+        return success, layer
+    
+    def load_voirie_wfs(self, code_insee, bbox=None):
+        """Charge la voirie communale depuis le WFS DGCL
+        
+        Args:
+            code_insee: Code INSEE de la commune
+            bbox: Emprise de la commune pour filtrage spatial (optionnel)
+        
+        Returns:
+            tuple: (bool, QgsVectorLayer ou None) - (succès, couche chargée)
+        """
+        success, layer = self.load_wfs_layer(
+            typename="DGCL.2025:voirie_communale",
+            layer_name=f"DGCL Voirie communale retenue DSR 2025 {code_insee}",
+            crs="EPSG:4326",
+            bbox=bbox
+        )
+        
+        # Afficher le message seulement si c'est le seul chargement
+        if not self.dlg.chkCadastre.isChecked() and not self.dlg.chkCommune.isChecked() and not self.dlg.chkBAN.isChecked():
+            if success:
+                QMessageBox.information(
+                    self.iface.mainWindow(),
+                    "Voirie communale chargée",
+                    f"Le réseau de voirie de la commune {code_insee} a été chargé avec succès."
+                )
+            else:
+                QMessageBox.warning(
+                    self.iface.mainWindow(),
+                    "Voirie communale non disponible",
+                    f"Impossible de charger la voirie pour le code INSEE {code_insee}.\n\n"
+                    "Consultez le journal des messages pour plus de détails."
+                )
+        
+        return success, layer
+    
+    def load_voirie_dep_wfs(self, code_insee, bbox=None):
+        """Charge la voirie départementale depuis le WFS DGCL
+        
+        Args:
+            code_insee: Code INSEE de la commune
+            bbox: Emprise de la commune pour filtrage spatial (optionnel)
+        
+        Returns:
+            tuple: (bool, QgsVectorLayer ou None) - (succès, couche chargée)
+        """
+        success, layer = self.load_wfs_layer(
+            typename="DGCL.2025:voirie_departementale",
+            layer_name=f"DGCL Voirie départementale retenue DGF 2025 {code_insee}",
+            crs="EPSG:4326",
+            bbox=bbox
+        )
+        
+        # Afficher le message seulement si c'est le seul chargement
+        if not self.dlg.chkCadastre.isChecked() and not self.dlg.chkCommune.isChecked() and not self.dlg.chkBAN.isChecked() and not self.dlg.chkVoirie.isChecked():
+            if success:
+                QMessageBox.information(
+                    self.iface.mainWindow(),
+                    "Voirie départementale chargée",
+                    f"Le réseau de voirie départementale de la commune {code_insee} a été chargé avec succès."
+                )
+            else:
+                QMessageBox.warning(
+                    self.iface.mainWindow(),
+                    "Voirie départementale non disponible",
+                    f"Impossible de charger la voirie départementale pour le code INSEE {code_insee}.\n\n"
+                    "Consultez le journal des messages pour plus de détails."
+                )
+        
+        return success, layer
+
+
+    def load_majic_parcelles(self, code_insee):
+        """Charge les parcelles des personnes morales (MAJIC) sous forme de polygones.
+
+        Stratégie en deux étapes :
+        1. Récupère les attributs MAJIC depuis l'API Koumoul (DGFiP) pour la commune.
+        2. Charge les polygones de parcelles depuis le WFS IGN Géoplateforme
+           (CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle), filtrés par commune.
+        3. Crée une couche polygone mémoire avec uniquement les parcelles MAJIC.
+
+        Args:
+            code_insee: Code INSEE de la commune (5 caractères)
+
+        Returns:
+            tuple: (bool, QgsVectorLayer ou None)
+        """
+
+        # ── Étape 1 : attributs MAJIC depuis Koumoul ──────────────────────────
+        BASE_URL = "https://koumoul.com/data-fair/api/v1/datasets/parcelles-des-personnes-morales/lines"
+        SELECT = ",".join([
+            "code_parcelle", "denomination", "groupe_personne",
+            "forme_juridique_abregee", "numero_siren", "contenance_parcelle",
+            "nature_culture", "adresse"
+        ])
+
+        QgsMessageLog.logMessage(
+            f"MAJIC : chargement des attributs pour {code_insee}",
+            "CheminsRuraux", Qgis.Info
+        )
+
+        majic_by_parcelle = {}
+        size = 1000
+        after = None
+
+        try:
+            while True:
+                params = {
+                    'qs': f'code_commune:{code_insee}',
+                    'size': size,
+                    'select': SELECT
+                }
+                if after:
+                    params['after'] = after
+                url = f"{BASE_URL}?{urllib.parse.urlencode(params)}"
+
+                req = urllib.request.Request(
+                    url, headers={'User-Agent': 'QGIS-VoirieCommunale/1.0'}
+                )
+                with urllib.request.urlopen(req, timeout=30) as response:
+                    data = json.loads(response.read().decode('utf-8'))
+
+                for r in data.get('results', []):
+                    cp = r.get('code_parcelle')
+                    if cp:
+                        majic_by_parcelle[cp] = r
+
+                next_url = data.get('next')
+                batch_len = len(data.get('results', []))
+                if not next_url or batch_len < size:
+                    break
+                after_qs = urllib.parse.parse_qs(
+                    urllib.parse.urlparse(next_url).query
+                )
+                after = (after_qs.get('after') or [None])[0]
+                if not after:
+                    break
+
+        except Exception as e:
+            QgsMessageLog.logMessage(
+                f"MAJIC : erreur API Koumoul : {e}",
+                "CheminsRuraux", Qgis.Critical
+            )
+            return False, None
+
+        if not majic_by_parcelle:
+            QgsMessageLog.logMessage(
+                f"MAJIC : aucune parcelle trouvée pour {code_insee}",
+                "CheminsRuraux", Qgis.Warning
+            )
+            return False, None
+
+        QgsMessageLog.logMessage(
+            f"MAJIC : {len(majic_by_parcelle)} parcelles MAJIC trouvées pour {code_insee}",
+            "CheminsRuraux", Qgis.Info
+        )
+
+        # ── Étape 2 : polygones depuis le WFS IGN ─────────────────────────────
+        # Extraire code_dep et code_com selon le format du code INSEE
+        import re as _re
+        if _re.match(r'97[1-6]', code_insee):
+            code_dep = code_insee[:3]
+            code_com = code_insee[3:]
+        else:
+            code_dep = code_insee[:2]
+            code_com = code_insee[2:]
+
+        WFS_URL = "https://data.geopf.fr/wfs"
+        wfs_params_base = {
+            'SERVICE': 'WFS',
+            'VERSION': '2.0.0',
+            'REQUEST': 'GetFeature',
+            'TYPENAMES': 'CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle',
+            'CQL_FILTER': f"code_dep='{code_dep}' AND code_com='{code_com}'",
+            'OUTPUTFORMAT': 'application/json',
+            'COUNT': 1000
+        }
+
+        wfs_features = []
+        start_index = 0
+
+        try:
+            while True:
+                params = dict(wfs_params_base)
+                params['STARTINDEX'] = start_index
+                url = f"{WFS_URL}?{urllib.parse.urlencode(params)}"
+                QgsMessageLog.logMessage(
+                    f"MAJIC WFS parcelles (startIndex={start_index}) : {url}",
+                    "CheminsRuraux", Qgis.Info
+                )
+                req = urllib.request.Request(
+                    url, headers={'User-Agent': 'QGIS-VoirieCommunale/1.0'}
+                )
+                with urllib.request.urlopen(req, timeout=60) as response:
+                    fc = json.loads(response.read().decode('utf-8'))
+
+                batch = fc.get('features', [])
+                wfs_features.extend(batch)
+                if len(batch) < 1000:
+                    break
+                start_index += 1000
+
+        except Exception as e:
+            QgsMessageLog.logMessage(
+                f"MAJIC : erreur WFS IGN parcelles : {e}",
+                "CheminsRuraux", Qgis.Critical
+            )
+            return False, None
+
+        QgsMessageLog.logMessage(
+            f"MAJIC : {len(wfs_features)} polygones WFS chargés pour {code_insee}",
+            "CheminsRuraux", Qgis.Info
+        )
+
+        # ── Étape 3 : jointure et création de la couche polygone ─────────────
+        layer = QgsVectorLayer(
+            "MultiPolygon?crs=EPSG:4326",
+            f"Parcelles MAJIC {code_insee}",
+            "memory"
+        )
+        provider = layer.dataProvider()
+        provider.addAttributes([
+            QgsField("code_parcelle",   QVariant.String),
+            QgsField("denomination",    QVariant.String),
+            QgsField("groupe_personne", QVariant.Int),
+            QgsField("forme_juridique", QVariant.String),
+            QgsField("numero_siren",    QVariant.String),
+            QgsField("contenance_m2",   QVariant.Int),
+            QgsField("nature_culture",  QVariant.String),
+            QgsField("adresse",         QVariant.String),
+            QgsField("section",         QVariant.String),
+            QgsField("numero",          QVariant.String),
+        ])
+        layer.updateFields()
+
+        def geojson_to_qgsgeometry(geom_dict):
+            """Convertit un dict GeoJSON geometry en QgsGeometry (Polygon/MultiPolygon)."""
+            gtype = geom_dict.get('type', '')
+            coords = geom_dict.get('coordinates', [])
+            if gtype == 'Polygon':
+                rings = [[QgsPointXY(x, y) for x, y in ring] for ring in coords]
+                return QgsGeometry.fromPolygonXY(rings)
+            elif gtype == 'MultiPolygon':
+                polys = [
+                    [[QgsPointXY(x, y) for x, y in ring] for ring in poly]
+                    for poly in coords
+                ]
+                return QgsGeometry.fromMultiPolygonXY(polys)
+            return QgsGeometry()
+
+        features = []
+        matched = 0
+        for wfs_feat in wfs_features:
+            props = wfs_feat.get('properties', {})
+            idu = props.get('idu', '')
+            # Correction : tester aussi code_parcelle sans padding, sans majuscules, etc.
+            candidates = [idu, idu.lstrip('0'), idu.upper(), idu.lower()]
+            majic_match = None
+            for c in candidates:
+                if c in majic_by_parcelle:
+                    majic_match = majic_by_parcelle[c]
+                    break
+            if not majic_match:
+                continue
+
+            m = majic_match
+            geom_dict = wfs_feat.get('geometry')
+            if not geom_dict:
+                continue
+            geom = geojson_to_qgsgeometry(geom_dict)
+            if geom.isNull():
+                continue
+
+            feat = QgsFeature()
+            feat.setGeometry(geom)
+            groupe = m.get('groupe_personne')
+            feat.setAttributes([
+                idu,
+                m.get('denomination', ''),
+                int(groupe) if groupe is not None else None,
+                m.get('forme_juridique_abregee', ''),
+                m.get('numero_siren', ''),
+                m.get('contenance_parcelle'),
+                m.get('nature_culture', ''),
+                m.get('adresse', ''),
+                props.get('section', ''),
+                props.get('numero', ''),
+            ])
+            features.append(feat)
+            matched += 1
+
+        provider.addFeatures(features)
+        layer.updateExtents()
+
+        # ── Rendu catégorisé par groupe_personne (légende identique à Koumoul) ──
+        # Seuls les groupes présents dans les données sont ajoutés
+        unique_groupes = sorted({
+            int(v['groupe_personne'])
+            for v in majic_by_parcelle.values()
+            if v.get('groupe_personne') is not None
+        })
+        cat_styles = []
+        for g in unique_groupes:
+            libelle, couleur = MAJIC_GROUPES.get(g, (f'Groupe {g}', _MAJIC_GROUPE_DEFAULT_COLOR))
+            symbol = QgsFillSymbol.createSimple({
+                'color': couleur,
+                'outline_color': '#333333',
+                'outline_width': '0.25',
+            })
+            cat_styles.append(QgsRendererCategory(g, symbol, libelle))
+        layer.setRenderer(QgsCategorizedSymbolRenderer('groupe_personne', cat_styles))
+
+        QgsProject.instance().addMapLayer(layer)
+
+        QgsMessageLog.logMessage(
+            f"MAJIC : {matched} parcelles polygones chargées pour {code_insee} "
+            f"({len(majic_by_parcelle) - matched} non géolocalisées dans WFS)",
+            "CheminsRuraux", Qgis.Info
+        )
+        return True, layer
+
+    def load_osm_roads(self, code_insee, bbox=None):
+        """Charge les routes OSM via Overpass API.
+
+        Args:
+            code_insee: Code INSEE de la commune
+            bbox: Emprise de la commune (xmin, ymin, xmax, ymax) en EPSG:4326
+
+        Returns:
+            tuple: (bool, QgsVectorLayer ou None)
+        """
+        if not bbox:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Emprise communale manquante",
+                "Impossible de calculer le BBOX pour OSM.\n"
+                "Chargez l'emprise communale ou vérifiez le code INSEE."
+            )
+            return False, None
+
+        xmin, ymin, xmax, ymax = bbox
+        south, west, north, east = ymin, xmin, ymax, xmax
+
+        query = (
+            "[out:json][timeout:120];"
+            "("
+            f"way[\"highway\"][\"ref\"~\"^(C|R)\"]({south},{west},{north},{east});"
+            f"relation[\"route\"][\"ref\"~\"^(C|R)\"]({south},{west},{north},{east});"
+            ");"
+            "out geom;"
+        )
+
+        QgsMessageLog.logMessage(
+            f"Requête Overpass OSM (routes ref C/R) pour {code_insee}",
+            "CheminsRuraux",
+            Qgis.Info
+        )
+
+        try:
+            data = urllib.parse.urlencode({"data": query}).encode("utf-8")
+            request = urllib.request.Request(
+                "https://overpass-api.de/api/interpreter",
+                data=data,
+                headers={"Content-Type": "application/x-www-form-urlencoded"}
+            )
+            with urllib.request.urlopen(request, timeout=180) as response:
+                payload = response.read().decode("utf-8")
+        except Exception as exc:
+            QgsMessageLog.logMessage(
+                f"Erreur Overpass OSM: {exc}",
+                "CheminsRuraux",
+                Qgis.Warning
+            )
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "OSM non disponible",
+                "Impossible de télécharger les routes OSM.\n"
+                "Consultez le journal des messages pour plus de détails."
+            )
+            return False, None
+
+        try:
+            data_json = json.loads(payload)
+        except Exception as exc:
+            QgsMessageLog.logMessage(
+                f"Erreur parsing JSON Overpass: {exc}",
+                "CheminsRuraux",
+                Qgis.Warning
+            )
+            return False, None
+
+        elements = data_json.get("elements", [])
+        relation_refs = {}
+        for elem in elements:
+            if elem.get("type") == "relation":
+                ref_val = elem.get("tags", {}).get("ref")
+                if not ref_val:
+                    continue
+                for member in elem.get("members", []):
+                    if member.get("type") == "way":
+                        relation_refs.setdefault(member.get("ref"), set()).add(ref_val)
+
+        layer_name = f"OSM Routes {code_insee} (C/R)"
+        uri = "LineString?crs=EPSG:4326&field=ref:string&field=name:string&field=highway:string&field=rel_ref:string"
+        filtered_layer = QgsVectorLayer(uri, layer_name, "memory")
+        filtered_provider = filtered_layer.dataProvider()
+
+        def add_way_to_layer(tags, geometry_points, ref_value, rel_ref_value):
+            highway = tags.get("highway")
+            if not highway:
+                return False
+            chosen_ref = ref_value or rel_ref_value
+            if not chosen_ref:
+                return False
+            ref_text = str(chosen_ref).strip().upper()
+            if not (ref_text.startswith("C") or ref_text.startswith("R")):
+                return False
+            points = [QgsPointXY(p["lon"], p["lat"]) for p in geometry_points if "lon" in p and "lat" in p]
+            if len(points) < 2:
+                return False
+            feat = QgsFeature(filtered_layer.fields())
+            feat.setGeometry(QgsGeometry.fromPolylineXY(points))
+            feat.setAttribute("ref", ref_value or "")
+            feat.setAttribute("name", tags.get("name", ""))
+            feat.setAttribute("highway", highway)
+            feat.setAttribute("rel_ref", rel_ref_value or "")
+            filtered_provider.addFeature(feat)
+            return True
+
+        matched_count = 0
+        added_way_ids = set()
+
+        # 1. Ways de premier niveau (avec geometry inline)
+        for elem in elements:
+            if elem.get("type") != "way":
+                continue
+            if "geometry" not in elem:
+                continue
+            way_id = elem.get("id")
+            tags = elem.get("tags", {})
+            ref_value = tags.get("ref")
+            rel_ref_value = ", ".join(sorted(relation_refs[way_id])) if way_id in relation_refs else None
+            if add_way_to_layer(tags, elem["geometry"], ref_value, rel_ref_value):
+                matched_count += 1
+                added_way_ids.add(way_id)
+
+        # 2. Members des relations (ways avec geometry dans les membres)
+        for elem in elements:
+            if elem.get("type") != "relation":
+                continue
+            rel_ref = elem.get("tags", {}).get("ref", "")
+            if not rel_ref:
+                continue
+            for member in elem.get("members", []):
+                if member.get("type") != "way":
+                    continue
+                if "geometry" not in member:
+                    continue
+                way_id = member.get("ref")
+                if way_id in added_way_ids:
+                    continue
+                tags = member.get("tags", {}) or {}
+                if add_way_to_layer(tags, member["geometry"], tags.get("ref"), rel_ref):
+                    matched_count += 1
+                    added_way_ids.add(way_id)
+
+        if matched_count == 0:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Aucune route C/R",
+                "Aucune route avec un 'ref' commençant par C ou R n'a été trouvée."
+            )
+            return False, None
+
+        QgsProject.instance().addMapLayer(filtered_layer)
+        self._style_osm_layer(filtered_layer)
+        return True, filtered_layer
+
+    def _style_osm_layer(self, layer):
+        """Applique un style catégorisé (CE / C / R) et des étiquettes à la couche OSM."""
+        # Expression QGIS : catégorie selon le début du champ 'ref'
+        # Priorité : CE avant C
+        expression = (
+            "CASE "
+            "WHEN upper(\"ref\") LIKE 'CE%' THEN 'CE' "
+            "WHEN upper(\"ref\") LIKE 'C%'  THEN 'C' "
+            "WHEN upper(\"ref\") LIKE 'R%'  THEN 'R' "
+            "ELSE 'Autre' END"
+        )
+
+        # Chemin d'exploitation (CE) - Vert
+        sym_ce = QgsLineSymbol.createSimple({
+            'color': '#2ca02c',
+            'width': '0.6',
+            'capstyle': 'round',
+            'joinstyle': 'round'
+        })
+        cat_ce = QgsRendererCategory('CE', sym_ce, 'Chemin d\'exploitation (CE)')
+
+        # Chemin rural (C) - Orange/Marron
+        sym_c = QgsLineSymbol.createSimple({
+            'color': '#d46f00',
+            'width': '0.6',
+            'capstyle': 'round',
+            'joinstyle': 'round'
+        })
+        cat_c = QgsRendererCategory('C', sym_c, 'Chemin rural (C)')
+
+        # Route (R) - Rouge
+        sym_r = QgsLineSymbol.createSimple({
+            'color': '#d62728',
+            'width': '0.6',
+            'capstyle': 'round',
+            'joinstyle': 'round'
+        })
+        cat_r = QgsRendererCategory('R', sym_r, 'Route (R)')
+
+        # Autre - Gris (masqué par défaut)
+        sym_autre = QgsLineSymbol.createSimple({'color': '#999999', 'width': '0.4'})
+        cat_autre = QgsRendererCategory('Autre', sym_autre, 'Autre')
+        cat_autre.setRenderState(False)
+
+        renderer = QgsCategorizedSymbolRenderer(expression, [cat_ce, cat_c, cat_r, cat_autre])
+        layer.setRenderer(renderer)
+
+        # Étiquettes : afficher le champ 'ref'
+        label_settings = QgsPalLayerSettings()
+        label_settings.fieldName = 'ref'
+        label_settings.enabled = True
+        label_settings.placement = QgsPalLayerSettings.Line
+
+        text_format = QgsTextFormat()
+        text_format.setSize(7)
+        text_format.setColor(QColor(40, 40, 40))
+
+        buffer = QgsTextBufferSettings()
+        buffer.setEnabled(True)
+        buffer.setSize(0.8)
+        buffer.setColor(QColor(255, 255, 255))
+        text_format.setBuffer(buffer)
+
+        label_settings.setFormat(text_format)
+        layer.setLabeling(QgsVectorLayerSimpleLabeling(label_settings))
+        layer.setLabelsEnabled(True)
+        layer.triggerRepaint()
+
+    def run(self):
+        """Run method that performs all the real work"""
+
+        # Create the dialog with elements (after translation) and keep reference
+        # Only create GUI ONCE in callback, so that it will only load when the plugin is started
+        if self.first_start:
+            self.first_start = False
+            self.dlg = CheminsRurauxDialog()
+            # Afficher la version dans le titre
+            self.dlg.setWindowTitle(f"Voirie Communale v{__version__}")
+            # Connecter le bouton de chargement (gère cadastre ET commune selon le bouton radio)
+            self.dlg.btnLoadCadastre.clicked.connect(self.validate_and_load)
+
+        # show the dialog (non-modal, reste ouvert après actions)
+        self.dlg.show()
+        # Ramener le dialogue au premier plan s'il était déjà ouvert
+        self.dlg.raise_()
+        self.dlg.activateWindow()

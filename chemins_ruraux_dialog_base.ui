@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CheminsRurauxDialogBase</class>
+ <widget class="QDialog" name="CheminsRurauxDialogBase">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>0</y>
+      <width>400</width>
+      <height>320</height>
+     </rect>
+    </property>
+  <property name="windowTitle">
+   <string>Voirie Communale - Recensement</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Recensement de la voirie communale</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBoxCadastre">
+     <property name="title">
+      <string>Données géographiques</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <item>
+         <widget class="QLabel" name="labelCodeInsee">
+          <property name="text">
+           <string>Code INSEE :</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="txtCodeInsee">
+          <property name="toolTip">
+           <string>Code INSEE de la commune (5 caractères : département + commune)</string>
+          </property>
+          <property name="placeholderText">
+           <string>Ex: 75056 (Paris), 2A004 (Ajaccio)</string>
+          </property>
+          <property name="maxLength">
+           <number>5</number>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QLabel" name="labelChoixCouches">
+        <property name="text">
+         <string>Données à charger :</string>
+        </property>
+        <property name="styleSheet">
+         <string>font-weight: bold; margin-top: 10px;</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="chkToutSelectionner">
+        <property name="text">
+         <string>Tout sélectionner / Désélectionner</string>
+        </property>
+        <property name="styleSheet">
+         <string>color: #555; font-style: italic;</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="chkCadastre">
+        <property name="text">
+         <string>Cadastre (10 couches : parcelles, bâtiments, lieux-dits, etc.) (Licence Ouverte 2.0)</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="chkCommune">
+        <property name="text">
+         <string>Emprise communale (Admin Express IGN) (Licence Ouverte 2.0)</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="chkBAN">
+        <property name="text">
+         <string>Adresses (Base Adresse Nationale - BAN) (Licence Ouverte 2.0)</string>
+        </property>
+        <property name="toolTip">
+         <string>Charge toutes les adresses de la commune (peut être lent pour les grandes villes)</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="chkVoirie">
+        <property name="text">
+         <string>Voirie communale (DGCL 2025) (Licence Ouverte 2.0)</string>
+        </property>
+        <property name="toolTip">
+         <string>Charge le réseau de voirie communale (calcul IGN pour la DGCL)</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="chkVoirieDep">
+        <property name="text">
+         <string>Voirie départementale (DGCL 2025) (Licence Ouverte 2.0)</string>
+        </property>
+        <property name="toolTip">
+         <string>Charge le réseau de voirie départementale (calcul IGN pour la DGCL)</string>
+        </property>
+       </widget>
+      </item>
+    <item>
+     <widget class="QCheckBox" name="chkOsmRoutes">
+      <property name="text">
+      <string>Routes OSM (Overpass) (ODbL)</string>
+      </property>
+      <property name="toolTip">
+       <string>Télécharge les routes OSM filtrées sur la commune</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QCheckBox" name="chkBDTopoRoutesNom">
+      <property name="text">
+      <string>Routes numérotées ou nommées (BD TOPO® IGN) (Licence Ouverte 2.0)</string>
+      </property>
+      <property name="toolTip">
+       <string>Charge les routes numérotées ou nommées (BDTOPO_V3:route_numerotee_ou_nommee) filtrées sur l'emprise de la commune</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QCheckBox" name="chkMajic">
+      <property name="text">
+      <string>Parcelles personnes morales (MAJIC) (Licence Ouverte 2.0)</string>
+      </property>
+      <property name="toolTip">
+       <string>Charge les parcelles cadastrales détenues par des personnes morales (données DGFiP via Koumoul)</string>
+      </property>
+     </widget>
+    </item>
+      <item>
+       <widget class="QPushButton" name="btnLoadCadastre">
+        <property name="text">
+         <string>Charger les données</string>
+        </property>
+        <property name="toolTip">
+         <string>Charge les données sélectionnées pour le code INSEE saisi</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="button_box">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>button_box</sender>
+   <signal>accepted()</signal>
+   <receiver>CheminsRurauxDialogBase</receiver>
+   <slot>accept()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>button_box</sender>
+   <signal>rejected()</signal>
+   <receiver>CheminsRurauxDialogBase</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

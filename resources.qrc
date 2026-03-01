@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/chemins_ruraux" >
+        <file>icon.png</file>
+    </qresource>
+</RCC>
