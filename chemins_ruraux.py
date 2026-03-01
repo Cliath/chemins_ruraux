@@ -27,7 +27,7 @@ import json
 # Initialize Qt resources from file resources.py
 from .resources import *
 # Import the code for the dialog
-from .chemins_ruraux_dialog import CheminsRurauxDialog
+from .chemins_ruraux_dialog import CheminsRurauxDialog, TodoDialog
 # Import version information
 from .version import __version__, get_changelog
 
@@ -359,16 +359,10 @@ class CheminsRuraux:
         msg.exec_()
 
     def show_todo(self):
-        """Ouvre le fichier TODO.md dans l'éditeur système par défaut."""
+        """Ouvre la fenêtre ToDo (lit/écrite dans TODO.md)."""
         todo_path = os.path.join(os.path.dirname(__file__), 'TODO.md')
-        if os.path.exists(todo_path):
-            os.startfile(todo_path)
-        else:
-            QMessageBox.warning(
-                self.iface.mainWindow(),
-                "ToDo",
-                f"Fichier TODO.md introuvable :\n{todo_path}"
-            )
+        dlg = TodoDialog(todo_path, parent=self.iface.mainWindow())
+        dlg.exec_()
 
     def validate_and_load(self):
         """Valide le code INSEE et charge les données selon le bouton radio sélectionné"""

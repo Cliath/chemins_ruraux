@@ -4,10 +4,16 @@ Version management for Voirie Communale plugin
 """
 
 
-__version__ = "0.9.52"
-__version_info__ = (0, 9, 52)
+__version__ = "0.9.53"
+__version_info__ = (0, 9, 53)
 
 VERSION_HISTORY = {
+    "0.9.53": {
+        "date": "2026-03-01",
+        "changes": [
+            "Modifié : ToDo ouvre désormais une fenêtre QGIS intégrée (QDialog) avec éditeur et bouton Enregistrer plutôt que l'éditeur système."
+        ]
+    },
     "0.9.52": {
         "date": "2026-03-01",
         "changes": [
