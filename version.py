@@ -4,10 +4,16 @@ Version management for Voirie Communale plugin
 """
 
 
-__version__ = "0.9.62"
-__version_info__ = (0, 9, 62)
+__version__ = "0.9.63"
+__version_info__ = (0, 9, 63)
 
 VERSION_HISTORY = {
+    "0.9.63": {
+        "date": "2026-03-01",
+        "changes": [
+            "Ajouté : case Tuiles Waze Editor (XYZ) dans Plans à charger. Nouvelle méthode générique load_xyz_tile_layer()."
+        ]
+    },
     "0.9.62": {
         "date": "2026-03-01",
         "changes": [

@@ -432,8 +432,9 @@ class CheminsRuraux:
         scan_etat_major_checked = hasattr(self.dlg, 'chkScanEtatMajor') and self.dlg.chkScanEtatMajor.isChecked()
         scan_cassini_checked = hasattr(self.dlg, 'chkScanCassini') and self.dlg.chkScanCassini.isChecked()
         scan50_1950_checked = hasattr(self.dlg, 'chkScan50_1950') and self.dlg.chkScan50_1950.isChecked()
+        waze_tiles_checked = hasattr(self.dlg, 'chkWazeTiles') and self.dlg.chkWazeTiles.isChecked()
         
-        if not cadastre_checked and not commune_checked and not ban_checked and not voirie_checked and not voirie_dep_checked and not osm_routes_checked and not bdtopo_routesnom_checked and not majic_checked and not scan_etat_major_checked and not scan_cassini_checked and not scan50_1950_checked:
+        if not cadastre_checked and not commune_checked and not ban_checked and not voirie_checked and not voirie_dep_checked and not osm_routes_checked and not bdtopo_routesnom_checked and not majic_checked and not scan_etat_major_checked and not scan_cassini_checked and not scan50_1950_checked and not waze_tiles_checked:
             QMessageBox.warning(
                 self.iface.mainWindow(),
                 "Sélection requise",
@@ -451,7 +452,8 @@ class CheminsRuraux:
             cadastre_checked, commune_checked, ban_checked,
             voirie_checked, voirie_dep_checked, osm_routes_checked,
             bdtopo_routesnom_checked, majic_checked,
-            scan_etat_major_checked, scan_cassini_checked, scan50_1950_checked
+            scan_etat_major_checked, scan_cassini_checked, scan50_1950_checked,
+            waze_tiles_checked
         ])
         # +1 pour le chargement éventuel de la commune (bbox)
         if (voirie_checked or voirie_dep_checked or osm_routes_checked or bdtopo_routesnom_checked) and not commune_checked:
@@ -709,6 +711,45 @@ class CheminsRuraux:
                 )
 
         return success, layer
+
+    def load_xyz_tile_layer(self, url, display_name, zmin=0, zmax=19):
+        """Charge une couche de tuiles XYZ.
+
+        Args:
+            url (str): URL du service XYZ avec {z}/{x}/{y} comme variables de tuile
+            display_name (str): Nom affiché dans le panneau des couches
+            zmin (int): Niveau de zoom minimum
+            zmax (int): Niveau de zoom maximum
+
+        Returns:
+            tuple: (bool, list) - (succès, liste des couches chargées)
+        """
+        try:
+            uri = f"type=xyz&url={url}&zmax={zmax}&zmin={zmin}"
+            self._remove_layers_by_name(display_name)
+            layer = QgsRasterLayer(uri, display_name, 'wms')
+            if layer.isValid():
+                QgsProject.instance().addMapLayer(layer)
+                QgsMessageLog.logMessage(
+                    f"Tuiles XYZ chargées : {display_name}",
+                    "CheminsRuraux",
+                    Qgis.Info
+                )
+                return True, [layer]
+            else:
+                QgsMessageLog.logMessage(
+                    f"Impossible de charger les tuiles XYZ : {display_name} \u2014 URI : {uri}",
+                    "CheminsRuraux",
+                    Qgis.Warning
+                )
+                return False, []
+        except Exception as e:
+            QgsMessageLog.logMessage(
+                f"Erreur chargement tuiles XYZ {display_name} : {str(e)}",
+                "CheminsRuraux",
+                Qgis.Critical
+            )
+            return False, []
 
     def load_cadastre_wms(self, code_insee):
         """Charge les couches cadastrales WMS pour le code INSEE donné

@@ -1,3 +1,7 @@
+# [0.9.63] - 2026-03-01
+### Ajouté
+- Case **Tuiles Waze Editor** dans Plans à charger : charge les tuiles XYZ `https://www.waze.com/row-tiles/editor/roads/{z}/{x}/{y}/tile.png` comme fond de plan raster.
+- Méthode générique `load_xyz_tile_layer(url, display_name, zmin, zmax)` utilisable pour tout service XYZ.
 # [0.9.62] - 2026-03-01
 ### Supprimé
 - Case **Surfaces non agricoles RPG** (SNA) retirée — la source n'est pas disponible et surchargement inutile.
