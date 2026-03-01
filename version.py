@@ -4,10 +4,16 @@ Version management for Voirie Communale plugin
 """
 
 
-__version__ = "0.9.63"
-__version_info__ = (0, 9, 63)
+__version__ = "0.9.64"
+__version_info__ = (0, 9, 64)
 
 VERSION_HISTORY = {
+    "0.9.64": {
+        "date": "2026-03-01",
+        "changes": [
+            "Modifié : case 'Tuiles Waze Editor' renommée en 'Waze'."
+        ]
+    },
     "0.9.63": {
         "date": "2026-03-01",
         "changes": [

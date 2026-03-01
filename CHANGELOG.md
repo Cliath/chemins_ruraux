@@ -1,3 +1,6 @@
+# [0.9.64] - 2026-03-01
+### Modifié
+- Case **Tuiles Waze Editor** renommée en **Waze**.
 # [0.9.63] - 2026-03-01
 ### Ajouté
 - Case **Tuiles Waze Editor** dans Plans à charger : charge les tuiles XYZ `https://www.waze.com/row-tiles/editor/roads/{z}/{x}/{y}/tile.png` comme fond de plan raster.

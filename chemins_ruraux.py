@@ -590,6 +590,16 @@ class CheminsRuraux:
             results.append(('SCAN 50\u00ae 1950', scan50_success))
             loaded_layers.extend(scan50_layers)
 
+        if waze_tiles_checked:
+            advance("Chargement Waze...")
+            waze_success, waze_layers = self.load_xyz_tile_layer(
+                'https://www.waze.com/row-tiles/editor/roads/{z}/{x}/{y}/tile.png',
+                'Waze',
+                zmin=0, zmax=19
+            )
+            results.append(('Waze', waze_success))
+            loaded_layers.extend(waze_layers)
+
         # Fermer la boîte de progression
         progress.setValue(steps)
         progress.close()

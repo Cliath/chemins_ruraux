@@ -194,7 +194,7 @@
       <item>
        <widget class="QCheckBox" name="chkWazeTiles">
         <property name="text">
-         <string>Tuiles Waze Editor (routes)</string>
+         <string>Waze</string>
         </property>
         <property name="toolTip">
          <string>Charge les tuiles XYZ Waze Editor (routes) comme fond de plan raster</string>
