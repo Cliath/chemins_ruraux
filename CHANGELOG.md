@@ -1,3 +1,6 @@
+# [0.9.72] - 2026-03-01
+### Ajouté
+- Dialogue Photos aériennes : 5 nouvelles périodes ajoutées (2000-2005, 2006-2010, 2011-2015, 2016-2020, 2021-2023) via `ORTHOIMAGERY.ORTHOPHOTOS{periode}` sur la Géoplateforme IGN.
 # [0.9.71] - 2026-03-01
 ### Ajouté
 - Bouton **Photographies aériennes historiques...** dans la section Plans à charger : ouvre un dialogue de sélection avec les 3 périodes IGN Géoplateforme (1950-1965, 1965-1980, 1980-1995). Chargement WMS immédiat à la validation, indépendant du bouton principal.

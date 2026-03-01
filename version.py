@@ -4,10 +4,16 @@ Version management for Voirie Communale plugin
 """
 
 
-__version__ = "0.9.71"
-__version_info__ = (0, 9, 71)
+__version__ = "0.9.72"
+__version_info__ = (0, 9, 72)
 
 VERSION_HISTORY = {
+    "0.9.72": {
+        "date": "2026-03-01",
+        "changes": [
+            "Ajouté : 5 nouvelles périodes de photographies aériennes (2000-2005, 2006-2010, 2011-2015, 2016-2020, 2021-2023) dans le dialogue Photos aériennes historiques."
+        ]
+    },
     "0.9.71": {
         "date": "2026-03-01",
         "changes": [

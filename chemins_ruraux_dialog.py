@@ -57,6 +57,11 @@ class PhotoAeriennesDialog(QDialog):
         ('ORTHOIMAGERY.ORTHOPHOTOS.1950-1965', 'Photos aériennes 1950-1965 (IGN Géoplateforme)'),
         ('ORTHOIMAGERY.ORTHOPHOTOS.1965-1980', 'Photos aériennes 1965-1980 (IGN Géoplateforme)'),
         ('ORTHOIMAGERY.ORTHOPHOTOS.1980-1995', 'Photos aériennes 1980-1995 (IGN Géoplateforme)'),
+        ('ORTHOIMAGERY.ORTHOPHOTOS2000-2005',  'Photos aériennes 2000-2005 (IGN Géoplateforme)'),
+        ('ORTHOIMAGERY.ORTHOPHOTOS2006-2010',  'Photos aériennes 2006-2010 (IGN Géoplateforme)'),
+        ('ORTHOIMAGERY.ORTHOPHOTOS2011-2015',  'Photos aériennes 2011-2015 (IGN Géoplateforme)'),
+        ('ORTHOIMAGERY.ORTHOPHOTOS2016-2020',  'Photos aériennes 2016-2020 (IGN Géoplateforme)'),
+        ('ORTHOIMAGERY.ORTHOPHOTOS2021-2023',  'Photos aériennes 2021-2023 (IGN Géoplateforme)'),
     ]
 
     def __init__(self, parent=None):
