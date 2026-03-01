@@ -1489,7 +1489,7 @@ class CheminsRuraux:
                 return False
             feat = QgsFeature(filtered_layer.fields())
             feat.setGeometry(QgsGeometry.fromPolylineXY(points))
-            feat.setAttribute("ref", ref_value or "")
+            feat.setAttribute("ref", chosen_ref)  # ref direct, sinon ref de la relation
             feat.setAttribute("name", tags.get("name", ""))
             feat.setAttribute("highway", highway)
             feat.setAttribute("rel_ref", rel_ref_value or "")

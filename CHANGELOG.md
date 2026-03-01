@@ -1,3 +1,6 @@
+# [0.9.47] - 2026-03-01
+### Correction
+- OSM Routes : la catégorisation (CE / C / R) était incorrecte pour les tronçons sans `ref` direct mais appartenant à une relation référencée. Le champ `ref` stocke désormais la meilleure référence disponible (`ref` direct, sinon `rel_ref`).
 # [0.9.46] - 2026-03-01
 ### Ajouté
 - Barre de progression (`QProgressDialog`) affichée après 1,5 seconde d'attente, avec le nom de la source en cours de chargement. Se ferme automatiquement à la fin.

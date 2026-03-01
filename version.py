@@ -4,10 +4,16 @@ Version management for Voirie Communale plugin
 """
 
 
-__version__ = "0.9.46"
-__version_info__ = (0, 9, 46)
+__version__ = "0.9.47"
+__version_info__ = (0, 9, 47)
 
 VERSION_HISTORY = {
+    "0.9.47": {
+        "date": "2026-03-01",
+        "changes": [
+            "Corrigé : catégorisation OSM (CE/C/R) échouait pour les tronçons sans ref direct mais appartenant à une relation référencée — le champ ref utilise maintenant chosen_ref (ref direct sinon ref de la relation)."
+        ]
+    },
     "0.9.46": {
         "date": "2026-03-01",
         "changes": [
