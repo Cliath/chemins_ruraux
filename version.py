@@ -4,10 +4,16 @@ Version management for Voirie Communale plugin
 """
 
 
-__version__ = "0.9.55"
-__version_info__ = (0, 9, 55)
+__version__ = "0.9.56"
+__version_info__ = (0, 9, 56)
 
 VERSION_HISTORY = {
+    "0.9.56": {
+        "date": "2026-03-01",
+        "changes": [
+            "Modifié : TODO.md n'est plus stocké dans le dossier du plugin (qui est écrasé à chaque mise à jour) mais dans le profil utilisateur QGIS (QgsApplication.qgisSettingsDirPath()/chemins_ruraux/TODO.md)."
+        ]
+    },
     "0.9.55": {
         "date": "2026-03-01",
         "changes": [

@@ -11,7 +11,7 @@ from qgis.PyQt.QtWidgets import QAction, QMessageBox, QProgressDialog
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QApplication
 from qgis.core import (QgsProject, QgsVectorLayer, QgsRasterLayer, QgsMessageLog,
-                       Qgis, QgsLayerTreeGroup, QgsCoordinateTransform,
+                       Qgis, QgsApplication, QgsLayerTreeGroup, QgsCoordinateTransform,
                        QgsRendererCategory, QgsCategorizedSymbolRenderer, QgsSingleSymbolRenderer,
                        QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, QgsFeature, QgsField,
                        QgsGeometry, QgsPointXY,
@@ -359,8 +359,19 @@ class CheminsRuraux:
         msg.exec_()
 
     def show_todo(self):
-        """Ouvre la fenêtre ToDo (lit/écrite dans TODO.md)."""
-        todo_path = os.path.join(os.path.dirname(__file__), 'TODO.md')
+        """Ouvre la fenêtre ToDo (lit/écrite dans le profil utilisateur QGIS)."""
+        todo_dir = os.path.join(QgsApplication.qgisSettingsDirPath(), 'chemins_ruraux')
+        os.makedirs(todo_dir, exist_ok=True)
+        todo_path = os.path.join(todo_dir, 'TODO.md')
+        # Créer le fichier avec un contenu initial s'il n'existe pas encore
+        if not os.path.exists(todo_path):
+            plugin_todo = os.path.join(os.path.dirname(__file__), 'TODO.md')
+            if os.path.exists(plugin_todo):
+                import shutil
+                shutil.copy2(plugin_todo, todo_path)
+            else:
+                with open(todo_path, 'w', encoding='utf-8') as f:
+                    f.write('# TODO - Voirie Communale\n\n## En cours\n\n## À faire\n\n## Idées\n')
         dlg = TodoDialog(todo_path, parent=self.iface.mainWindow())
         dlg.exec_()
 
