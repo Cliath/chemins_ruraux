@@ -1,3 +1,6 @@
+# [0.9.73] - 2026-03-01
+### Modifié
+- **Photographies aériennes historiques** converti de bouton en case à cocher, intégrée dans "Tout sélectionner/Désélectionner". Quand cochée, le dialogue de choix des périodes s'ouvre à l'appui de "Charger les données", les périodes sélectionnées sont chargées dans la barre de progression comme les autres sources.
 # [0.9.72] - 2026-03-01
 ### Ajouté
 - Dialogue Photos aériennes : 5 nouvelles périodes ajoutées (2000-2005, 2006-2010, 2011-2015, 2016-2020, 2021-2023) via `ORTHOIMAGERY.ORTHOPHOTOS{periode}` sur la Géoplateforme IGN.

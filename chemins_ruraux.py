@@ -359,59 +359,6 @@ class CheminsRuraux:
         msg.setTextFormat(1)  # Qt::RichText
         msg.exec_()
 
-    def show_photo_aeriennes_dialog(self):
-        """Ouvre le dialogue de sélection des photos aériennes historiques et charge les WMS choisis."""
-        code_insee = self.dlg.txtCodeInsee.text().strip().upper()
-        if not code_insee:
-            QMessageBox.warning(
-                self.iface.mainWindow(),
-                "Code INSEE manquant",
-                "Veuillez saisir le code INSEE avant de charger des photographies aériennes."
-            )
-            return
-
-        dlg = PhotoAeriennesDialog(parent=self.iface.mainWindow())
-        if dlg.exec_() != QDialog.Accepted:
-            return
-
-        sources = dlg.selected_sources()
-        if not sources:
-            QMessageBox.information(
-                self.iface.mainWindow(),
-                "Aucune sélection",
-                "Aucune période sélectionnée."
-            )
-            return
-
-        results = []
-        for typename, display_name in sources:
-            success, layers = self.load_scan_historique_wms(typename, display_name)
-            results.append((display_name, success))
-
-        self._reorder_layers(code_insee)
-
-        success_count = sum(1 for _, ok in results if ok)
-        if len(results) > 1:
-            if success_count == len(results):
-                QMessageBox.information(
-                    self.iface.mainWindow(),
-                    "Photographies chargées",
-                    f"{success_count} couche(s) chargée(s) avec succès."
-                )
-            elif success_count > 0:
-                failed = [n for n, ok in results if not ok]
-                QMessageBox.warning(
-                    self.iface.mainWindow(),
-                    "Chargement partiel",
-                    f"Échec : {', '.join(failed)}\n\nConsultez le journal des messages."
-                )
-            else:
-                QMessageBox.warning(
-                    self.iface.mainWindow(),
-                    "Chargement échoué",
-                    "Aucune photographie aérienne n'a pu être chargée.\nConsultez le journal des messages."
-                )
-
     def show_todo(self):
         """Ouvre la fenêtre ToDo (lit/écrite dans le profil utilisateur QGIS)."""
         todo_dir = os.path.join(QgsApplication.qgisSettingsDirPath(), 'chemins_ruraux')
@@ -487,8 +434,9 @@ class CheminsRuraux:
         scan_cassini_checked = hasattr(self.dlg, 'chkScanCassini') and self.dlg.chkScanCassini.isChecked()
         scan50_1950_checked = hasattr(self.dlg, 'chkScan50_1950') and self.dlg.chkScan50_1950.isChecked()
         waze_tiles_checked = hasattr(self.dlg, 'chkWazeTiles') and self.dlg.chkWazeTiles.isChecked()
+        photo_aeriennes_checked = hasattr(self.dlg, 'chkPhotoAeriennes') and self.dlg.chkPhotoAeriennes.isChecked()
         
-        if not cadastre_checked and not commune_checked and not ban_checked and not voirie_checked and not voirie_dep_checked and not osm_routes_checked and not bdtopo_routesnom_checked and not majic_checked and not scan_etat_major_checked and not scan_cassini_checked and not scan50_1950_checked and not waze_tiles_checked:
+        if not cadastre_checked and not commune_checked and not ban_checked and not voirie_checked and not voirie_dep_checked and not osm_routes_checked and not bdtopo_routesnom_checked and not majic_checked and not scan_etat_major_checked and not scan_cassini_checked and not scan50_1950_checked and not waze_tiles_checked and not photo_aeriennes_checked:
             QMessageBox.warning(
                 self.iface.mainWindow(),
                 "Sélection requise",
@@ -501,6 +449,17 @@ class CheminsRuraux:
         loaded_layers = []
         commune_layer = None
 
+        # Si photos aériennes cochées, ouvrir le dialogue de sélection avant la progression
+        photo_aeriennes_sources = []
+        if photo_aeriennes_checked:
+            dlg_photos = PhotoAeriennesDialog(parent=self.iface.mainWindow())
+            if dlg_photos.exec_() != QDialog.Accepted:
+                photo_aeriennes_checked = False
+            else:
+                photo_aeriennes_sources = dlg_photos.selected_sources()
+                if not photo_aeriennes_sources:
+                    photo_aeriennes_checked = False
+
         # Compter le nombre d'étapes pour la barre de progression
         steps = sum([
             cadastre_checked, commune_checked, ban_checked,
@@ -508,7 +467,7 @@ class CheminsRuraux:
             bdtopo_routesnom_checked, majic_checked,
             scan_etat_major_checked, scan_cassini_checked, scan50_1950_checked,
             waze_tiles_checked
-        ])
+        ]) + len(photo_aeriennes_sources)
         # +1 pour le chargement éventuel de la commune (bbox)
         if (voirie_checked or voirie_dep_checked or osm_routes_checked or bdtopo_routesnom_checked) and not commune_checked:
             steps += 1
@@ -653,6 +612,12 @@ class CheminsRuraux:
             )
             results.append(('Waze', waze_success))
             loaded_layers.extend(waze_layers)
+
+        for typename, display_name in photo_aeriennes_sources:
+            advance(f"Chargement {display_name}...")
+            ph_success, ph_layers = self.load_scan_historique_wms(typename, display_name)
+            results.append((display_name, ph_success))
+            loaded_layers.extend(ph_layers)
 
         # Fermer la boîte de progression
         progress.setValue(steps)
@@ -1859,7 +1824,6 @@ class CheminsRuraux:
             # Afficher la version dans le titre
             self.dlg.setWindowTitle(f"Voirie Communale v{__version__}")
             # Connecter le bouton de chargement (gère cadastre ET commune selon le bouton radio)
-            self.dlg.btnPhotoAeriennes.clicked.connect(self.show_photo_aeriennes_dialog)
             self.dlg.btnLoadCadastre.clicked.connect(self.validate_and_load)
 
         # show the dialog (non-modal, reste ouvert après actions)

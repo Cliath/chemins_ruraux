@@ -4,10 +4,16 @@ Version management for Voirie Communale plugin
 """
 
 
-__version__ = "0.9.72"
-__version_info__ = (0, 9, 72)
+__version__ = "0.9.73"
+__version_info__ = (0, 9, 73)
 
 VERSION_HISTORY = {
+    "0.9.73": {
+        "date": "2026-03-01",
+        "changes": [
+            "Modifié : 'Photographies aériennes historiques' converti en case à cocher intégrée dans Tout sélectionner ; le dialogue de sélection des périodes s'ouvre lors du clic sur Charger les données."
+        ]
+    },
     "0.9.72": {
         "date": "2026-03-01",
         "changes": [
