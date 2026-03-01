@@ -621,6 +621,12 @@ class CheminsRuraux:
             results.append(('BD ORTHO\u00ae 20 cm', bdortho_success))
             loaded_layers.extend(bdortho_layers)
 
+        if plan_ign_checked:
+            advance("Chargement PLAN IGN J+1...")
+            planign_success, planign_layers = self.load_wms_epsg3857('GEOGRAPHICALGRIDSYSTEMS.MAPS.BDUNI.J1', 'PLAN IGN J+1')
+            results.append(('PLAN IGN J+1', planign_success))
+            loaded_layers.extend(planign_layers)
+
         for typename, display_name in photo_aeriennes_sources:
             advance(f"Chargement {display_name}...")
             ph_success, ph_layers = self.load_scan_historique_wms(typename, display_name)
