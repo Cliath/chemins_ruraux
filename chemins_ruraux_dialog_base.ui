@@ -192,6 +192,16 @@
        </widget>
       </item>
       <item>
+       <widget class="QCheckBox" name="chkScan50_1950">
+        <property name="text">
+         <string>SCAN 50® 1950 IGN (Licence Ouverte 2.0)</string>
+        </property>
+        <property name="toolTip">
+         <string>Charge le SCAN 50 de 1950 depuis la Géoplateforme IGN</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="btnLoadCadastre">
         <property name="text">
          <string>Charger les données</string>

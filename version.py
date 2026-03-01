@@ -4,10 +4,16 @@ Version management for Voirie Communale plugin
 """
 
 
-__version__ = "0.9.60"
-__version_info__ = (0, 9, 60)
+__version__ = "0.9.61"
+__version_info__ = (0, 9, 61)
 
 VERSION_HISTORY = {
+    "0.9.61": {
+        "date": "2026-03-01",
+        "changes": [
+            "Ajouté : SCAN 50\u00ae 1950 (GEOGRAPHICALGRIDSYSTEMS.MAPS.SCAN50.1950) dans Plans à charger."
+        ]
+    },
     "0.9.60": {
         "date": "2026-03-01",
         "changes": [

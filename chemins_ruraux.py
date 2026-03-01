@@ -432,8 +432,9 @@ class CheminsRuraux:
         majic_checked = self.dlg.chkMajic.isChecked()
         scan_etat_major_checked = hasattr(self.dlg, 'chkScanEtatMajor') and self.dlg.chkScanEtatMajor.isChecked()
         scan_cassini_checked = hasattr(self.dlg, 'chkScanCassini') and self.dlg.chkScanCassini.isChecked()
+        scan50_1950_checked = hasattr(self.dlg, 'chkScan50_1950') and self.dlg.chkScan50_1950.isChecked()
         
-        if not cadastre_checked and not commune_checked and not ban_checked and not voirie_checked and not voirie_dep_checked and not osm_routes_checked and not bdtopo_routesnom_checked and not rpg_sna_checked and not majic_checked and not scan_etat_major_checked and not scan_cassini_checked:
+        if not cadastre_checked and not commune_checked and not ban_checked and not voirie_checked and not voirie_dep_checked and not osm_routes_checked and not bdtopo_routesnom_checked and not rpg_sna_checked and not majic_checked and not scan_etat_major_checked and not scan_cassini_checked and not scan50_1950_checked:
             QMessageBox.warning(
                 self.iface.mainWindow(),
                 "Sélection requise",
@@ -451,7 +452,7 @@ class CheminsRuraux:
             cadastre_checked, commune_checked, ban_checked,
             voirie_checked, voirie_dep_checked, osm_routes_checked,
             bdtopo_routesnom_checked, rpg_sna_checked, majic_checked,
-            scan_etat_major_checked, scan_cassini_checked
+            scan_etat_major_checked, scan_cassini_checked, scan50_1950_checked
         ])
         # +1 pour le chargement éventuel de la commune (bbox)
         if (voirie_checked or voirie_dep_checked or osm_routes_checked or bdtopo_routesnom_checked or rpg_sna_checked) and not commune_checked:
@@ -588,6 +589,12 @@ class CheminsRuraux:
             cassini_success, cassini_layers = self.load_scan_historique_wms('GEOGRAPHICALGRIDSYSTEMS.CASSINI', 'Carte de Cassini')
             results.append(('Carte de Cassini', cassini_success))
             loaded_layers.extend(cassini_layers)
+
+        if scan50_1950_checked:
+            advance(f"Chargement SCAN 50\u00ae 1950 ({code_insee})...")
+            scan50_success, scan50_layers = self.load_scan_historique_wms('GEOGRAPHICALGRIDSYSTEMS.MAPS.SCAN50.1950', 'SCAN 50\u00ae 1950')
+            results.append(('SCAN 50\u00ae 1950', scan50_success))
+            loaded_layers.extend(scan50_layers)
 
         # Fermer la boîte de progression
         progress.setValue(steps)

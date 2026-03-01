@@ -27,7 +27,7 @@ class CheminsRurauxDialog(QtWidgets.QDialog, Ui_CheminsRurauxDialogBase):
         self._layer_checkboxes = [
             'chkCadastre', 'chkCommune', 'chkBAN',
             'chkVoirie', 'chkVoirieDep', 'chkOsmRoutes', 'chkBDTopoRoutesNom', 'chkRpgSna', 'chkMajic',
-            'chkScanEtatMajor', 'chkScanCassini'
+            'chkScanEtatMajor', 'chkScanCassini', 'chkScan50_1950'
         ]
         # Utiliser 'clicked' (pas 'stateChanged') pour les clics utilisateur sur la case maître
         # afin d'éviter le cycle tristate 0→1→2 qui passe par l'état partiel au premier clic
