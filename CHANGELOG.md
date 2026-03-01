@@ -1,3 +1,6 @@
+# [0.9.69] - 2026-03-01
+### Modifié
+- Ordre canonique : **Waze** déplacée au-dessus de Cadastre.
 # [0.9.68] - 2026-03-01
 ### Modifié
 - Ordre canonique : **Parcelles MAJIC** déplacées entre Adresses BAN et Commune.

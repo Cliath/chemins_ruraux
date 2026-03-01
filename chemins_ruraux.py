@@ -943,11 +943,11 @@ class CheminsRuraux:
             f"Adresses BAN {code_insee}",
             f"Parcelles MAJIC {code_insee}",
             f"Commune {code_insee}",
+            "Waze",
             f"Cadastre - {code_insee}",
             "SCAN 50\u00ae 1950",
             "Carte de Cassini",
             "Carte d'\u00c9tat-Major",
-            "Waze",
         ]
 
         # Traitement en ordre inversé : on insère successivement en position 0

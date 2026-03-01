@@ -4,10 +4,16 @@ Version management for Voirie Communale plugin
 """
 
 
-__version__ = "0.9.68"
-__version_info__ = (0, 9, 68)
+__version__ = "0.9.69"
+__version_info__ = (0, 9, 69)
 
 VERSION_HISTORY = {
+    "0.9.69": {
+        "date": "2026-03-01",
+        "changes": [
+            "Modifié : Waze placée au-dessus de Cadastre dans l'ordre canonique des couches."
+        ]
+    },
     "0.9.68": {
         "date": "2026-03-01",
         "changes": [
