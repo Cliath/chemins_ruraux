@@ -105,7 +105,14 @@ def create_plugin_zip(output_dir='releases'):
             file_path = Path(filename)
             if file_path.exists():
                 arcname = f"{plugin_name}/{filename}"
-                zipf.write(file_path, arcname)
+                # metadata.txt doit être sans BOM : configparser QGIS ne le supporte pas
+                if filename == 'metadata.txt':
+                    content = file_path.read_bytes()
+                    if content[:3] == b'\xef\xbb\xbf':
+                        content = content[3:]
+                    zipf.writestr(arcname, content)
+                else:
+                    zipf.write(file_path, arcname)
                 print(f"✓ Ajouté : {filename}")
             else:
                 print(f"⚠ Ignoré (non trouvé) : {filename}")
