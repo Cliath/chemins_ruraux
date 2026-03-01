@@ -1,3 +1,6 @@
+# [0.9.78] - 2026-03-01
+### Corrigé
+- **PLAN IGN J+1** absent de l'ordre canonique des couches : ajouté juste avant Waze.
 # [0.9.77] - 2026-03-01
 ### Corrigé
 - **PLAN IGN J+1** : correction du chargement — la couche ne déclarant que `EPSG:3857` dans les capacités WMS IGN, le chargement utilisait un CRS non supporté (`EPSG:2154`) rendant la couche invalide. Ajout de la méthode `load_wms_epsg3857()` dédiée. QGIS reprojecte côté client.

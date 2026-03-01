@@ -1014,6 +1014,7 @@ class CheminsRuraux:
             f"Adresses BAN {code_insee}",
             f"Parcelles MAJIC {code_insee}",
             f"Commune {code_insee}",
+            "PLAN IGN J+1",
             "Waze",
             "Photos aériennes 1950-1965",
             "Photos aériennes 1965-1980",
