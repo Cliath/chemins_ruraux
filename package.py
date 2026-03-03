@@ -8,7 +8,6 @@ Ce ZIP est installable directement dans QGIS
 import os
 import sys
 import zipfile
-import subprocess
 from pathlib import Path
 
 # Fichiers et dossiers à inclure dans le ZIP (strict)
@@ -146,66 +145,6 @@ def create_plugin_zip(output_dir='releases'):
     
     return zip_path
 
-def find_git():
-    """Trouve l'exécutable git (PATH ou GitHub Desktop)"""
-    import shutil
-    git = shutil.which("git")
-    if git:
-        return git
-    # GitHub Desktop embarque son propre git
-    import glob
-    patterns = [
-        os.path.expandvars(r"%LOCALAPPDATA%\GitHubDesktop\app-*\resources\app\git\cmd\git.exe"),
-    ]
-    for pattern in patterns:
-        matches = sorted(glob.glob(pattern), reverse=True)
-        if matches:
-            return matches[0]
-    return None
-
-
-def git_commit_and_push(version):
-    """Commit tous les fichiers modifiés et pousse sur GitHub"""
-    git = find_git()
-    if not git:
-        print("\n⚠ git introuvable — commit ignoré.")
-        return False
-
-    print(f"\n{'='*60}")
-    print("Publication sur GitHub...")
-    print(f"{'='*60}")
-
-    def run(args, **kwargs):
-        return subprocess.run([git] + args, capture_output=True, text=True, **kwargs)
-
-    # Stage tous les fichiers trackés (+ nouveaux fichiers connus)
-    r = run(["add", "--all"])
-    if r.returncode != 0:
-        print(f"✗ git add échoué : {r.stderr.strip()}")
-        return False
-
-    # Vérifier s'il y a quelque chose à committer
-    r = run(["status", "--porcelain"])
-    if not r.stdout.strip():
-        print("✓ Rien à committer (working tree propre)")
-        return True
-
-    # Commit
-    message = f"Release v{version}"
-    r = run(["commit", "-m", message])
-    if r.returncode != 0:
-        print(f"✗ git commit échoué : {r.stderr.strip()}")
-        return False
-    print(f"✓ Commit : {message}")
-
-    # Push
-    r = run(["push"])
-    if r.returncode != 0:
-        print(f"✗ git push échoué : {r.stderr.strip()}")
-        return False
-    print("✓ Push vers GitHub réussi")
-    return True
-
 
 def main():
     """Fonction principale"""
@@ -214,8 +153,7 @@ def main():
     os.chdir(script_dir)
     
     try:
-        zip_path = create_plugin_zip()
-        git_commit_and_push(__version__)
+        create_plugin_zip()
         return 0
     except Exception as e:
         print(f"\n✗ Erreur lors de la création du package : {e}")
