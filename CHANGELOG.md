@@ -1,3 +1,10 @@
+# [0.10.4] - 2026-03-03
+### Ajouté
+- Incrément de version automatique via `bump_version.py` (`build.bat patch|minor|major`).
+- Message de commit git extrait automatiquement depuis `CHANGELOG.md` via `get_commit_message.py`.
+### Supprimé
+- `build.sh` (Linux) — non maintenu, supprimé.
+- `compile_simple.py`, `QUICKSTART.md`, `espacecoStyles/` — fichiers obsolètes.
 # [0.10.3] - 2026-03-03
 ### Ajouté
 - **Paramètres** : bouton activé dans la barre de lancement. `SettingsDialog` avec deux options : *Zoom automatique* et *Réordonnancement automatique des couches* après chargement.
