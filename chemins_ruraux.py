@@ -1086,7 +1086,7 @@ class CheminsRuraux:
         """
         def _extract_nom(lyr):
             for feature in lyr.getFeatures():
-                for field in ('nom', 'NOM', 'nom_commune', 'NOM_COM'):
+                for field in ('nom_officiel', 'nom', 'NOM', 'nom_commune', 'NOM_COM'):
                     try:
                         val = feature.attribute(field)
                         if val:
