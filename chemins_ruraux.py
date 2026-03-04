@@ -1851,19 +1851,15 @@ class CheminsRuraux:
         root = QgsRuleBasedRenderer.Rule(None)
 
         rules = [
-            ('"ref" LIKE \'CE%\'',                          make_sym('#27ae60', '0.6'), 'CE – Chemin d\'exploitation'),
+            ('"ref" LIKE \'CE%\'',                           make_sym('#27ae60', '0.6'), 'CE – Chemin d\'exploitation'),
             ('"ref" LIKE \'C%\' AND "ref" NOT LIKE \'CE%\'', make_sym('#e67e22', '0.6'), 'C – Voie communale'),
             ('"ref" LIKE \'R%\'',                            make_sym('#c0392b', '0.6'), 'R – Chemin rural'),
-            ('ELSE',                                         make_sym('#888888', '0.4'), 'Autre'),
         ]
 
         for expr, sym, label in rules:
             rule = QgsRuleBasedRenderer.Rule(sym)
             rule.setLabel(label)
-            if expr == 'ELSE':
-                rule.setIsElse(True)
-            else:
-                rule.setFilterExpression(expr)
+            rule.setFilterExpression(expr)
             root.appendChild(rule)
 
         layer.setRenderer(QgsRuleBasedRenderer(root))
