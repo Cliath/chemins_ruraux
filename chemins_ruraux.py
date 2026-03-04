@@ -1740,27 +1740,27 @@ class CheminsRuraux:
     def load_osm_roads(self, code_insee, bbox=None):
         """Charge les routes OSM via Overpass API.
 
+        Utilise la relation administrative OSM (ref:INSEE, admin_level=8) pour filtrer
+        exactement dans le périmètre de la commune. Charge les types highway
+        pertinents pour la voirie rurale : track, path, unclassified, residential, service.
+
         Args:
             code_insee: Code INSEE de la commune
-            bbox: Emprise de la commune (xmin, ymin, xmax, ymax) en EPSG:4326 (toujours fourni)
+            bbox: Non utilisé (conservé pour compatibilité d'appel)
 
         Returns:
             tuple: (bool, QgsVectorLayer ou None)
         """
-        xmin, ymin, xmax, ymax = bbox
-        south, west, north, east = ymin, xmin, ymax, xmax
-
         query = (
-            "[out:json][timeout:120];"
-            "("
-            f"way[\"highway\"][\"ref\"~\"^(C|R)\"]({south},{west},{north},{east});"
-            f"relation[\"route\"][\"ref\"~\"^(C|R)\"]({south},{west},{north},{east});"
-            ");"
+            "[out:json][timeout:60];"
+            f'relation["ref:INSEE"="{code_insee}"]["boundary"="administrative"]["admin_level"="8"]->.commune;'
+            "map_to_area.commune->.commune_area;"
+            'way(area.commune_area)["highway"~"^(track|path|unclassified|residential|service)$"];'
             "out geom;"
         )
 
         QgsMessageLog.logMessage(
-            f"Requête Overpass OSM (routes ref C/R) pour {code_insee}",
+            f"Requête Overpass OSM (area ref:INSEE={code_insee}) — track/path/unclassified/residential/service",
             "CheminsRuraux",
             Qgis.Info
         )
@@ -1772,7 +1772,7 @@ class CheminsRuraux:
                 data=data,
                 headers={"Content-Type": "application/x-www-form-urlencoded"}
             )
-            with urllib.request.urlopen(request, timeout=180) as response:
+            with urllib.request.urlopen(request, timeout=90) as response:
                 payload = response.read().decode("utf-8")
         except Exception as exc:
             QgsMessageLog.logMessage(
@@ -1799,138 +1799,98 @@ class CheminsRuraux:
             return False, None
 
         elements = data_json.get("elements", [])
-        relation_refs = {}
-        for elem in elements:
-            if elem.get("type") == "relation":
-                ref_val = elem.get("tags", {}).get("ref")
-                if not ref_val:
-                    continue
-                for member in elem.get("members", []):
-                    if member.get("type") == "way":
-                        relation_refs.setdefault(member.get("ref"), set()).add(ref_val)
+        ways = [e for e in elements if e.get("type") == "way" and "geometry" in e]
 
-        layer_name = f"OSM Routes {code_insee}"
-        uri = "LineString?crs=EPSG:4326&field=ref:string&field=name:string&field=highway:string&field=rel_ref:string"
-        filtered_layer = QgsVectorLayer(uri, layer_name, "memory")
-        filtered_provider = filtered_layer.dataProvider()
-
-        def add_way_to_layer(tags, geometry_points, ref_value, rel_ref_value):
-            highway = tags.get("highway")
-            if not highway:
-                return False
-            chosen_ref = ref_value or rel_ref_value
-            if not chosen_ref:
-                return False
-            ref_text = str(chosen_ref).strip().upper()
-            if not (ref_text.startswith("C") or ref_text.startswith("R")):
-                return False
-            points = [QgsPointXY(p["lon"], p["lat"]) for p in geometry_points if "lon" in p and "lat" in p]
-            if len(points) < 2:
-                return False
-            feat = QgsFeature(filtered_layer.fields())
-            feat.setGeometry(QgsGeometry.fromPolylineXY(points))
-            feat.setAttribute("ref", chosen_ref)  # ref direct, sinon ref de la relation
-            feat.setAttribute("name", tags.get("name", ""))
-            feat.setAttribute("highway", highway)
-            feat.setAttribute("rel_ref", rel_ref_value or "")
-            filtered_provider.addFeature(feat)
-            return True
-
-        matched_count = 0
-        added_way_ids = set()
-
-        # 1. Ways de premier niveau (avec geometry inline)
-        for elem in elements:
-            if elem.get("type") != "way":
-                continue
-            if "geometry" not in elem:
-                continue
-            way_id = elem.get("id")
-            tags = elem.get("tags", {})
-            ref_value = tags.get("ref")
-            rel_ref_value = ", ".join(sorted(relation_refs[way_id])) if way_id in relation_refs else None
-            if add_way_to_layer(tags, elem["geometry"], ref_value, rel_ref_value):
-                matched_count += 1
-                added_way_ids.add(way_id)
-
-        # 2. Members des relations (ways avec geometry dans les membres)
-        for elem in elements:
-            if elem.get("type") != "relation":
-                continue
-            rel_ref = elem.get("tags", {}).get("ref", "")
-            if not rel_ref:
-                continue
-            for member in elem.get("members", []):
-                if member.get("type") != "way":
-                    continue
-                if "geometry" not in member:
-                    continue
-                way_id = member.get("ref")
-                if way_id in added_way_ids:
-                    continue
-                tags = member.get("tags", {}) or {}
-                if add_way_to_layer(tags, member["geometry"], tags.get("ref"), rel_ref):
-                    matched_count += 1
-                    added_way_ids.add(way_id)
-
-        if matched_count == 0:
+        if not ways:
+            QgsMessageLog.logMessage(
+                f"Overpass OSM : aucune route trouvée pour {code_insee}. "
+                "La commune est peut-être absente de la base OSM (ref:INSEE manquant).",
+                "CheminsRuraux",
+                Qgis.Warning
+            )
             QMessageBox.warning(
                 self.iface.mainWindow(),
-                "Aucune route C/R",
-                "Aucune route avec un 'ref' commençant par C ou R n'a été trouvée."
+                "Routes OSM introuvables",
+                f"Aucune route OSM trouvée pour la commune {code_insee}.\n\n"
+                "Vérifiez que la commune est bien référencée dans OSM avec le tag ref:INSEE."
             )
             return False, None
 
-        self._remove_layers_by_name(layer_name)
-        QgsProject.instance().addMapLayer(filtered_layer)
-        self._style_osm_layer(filtered_layer)
-        return True, filtered_layer
+        layer_name = f"OSM Routes {code_insee}"
+        uri = (
+            "LineString?crs=EPSG:4326"
+            "&field=osm_id:string"
+            "&field=highway:string"
+            "&field=name:string"
+            "&field=ref:string"
+            "&field=surface:string"
+            "&field=tracktype:string"
+        )
+        mem_layer = QgsVectorLayer(uri, layer_name, "memory")
+        provider = mem_layer.dataProvider()
 
-    def _style_osm_layer(self, layer):
-        """Applique un style catégorisé (CE / C / R) et des étiquettes à la couche OSM."""
-        # Expression QGIS : catégorie selon le début du champ 'ref'
-        # Priorité : CE avant C
-        expression = (
-            "CASE "
-            "WHEN upper(\"ref\") LIKE 'CE%' THEN 'CE' "
-            "WHEN upper(\"ref\") LIKE 'C%'  THEN 'C' "
-            "WHEN upper(\"ref\") LIKE 'R%'  THEN 'R' "
-            "ELSE 'Autre' END"
+        features = []
+        for elem in ways:
+            tags = elem.get("tags", {})
+            points = [
+                QgsPointXY(p["lon"], p["lat"])
+                for p in elem["geometry"]
+                if "lon" in p and "lat" in p
+            ]
+            if len(points) < 2:
+                continue
+            feat = QgsFeature(mem_layer.fields())
+            feat.setGeometry(QgsGeometry.fromPolylineXY(points))
+            feat.setAttribute("osm_id",   str(elem.get("id", "")))
+            feat.setAttribute("highway",   tags.get("highway", ""))
+            feat.setAttribute("name",      tags.get("name", ""))
+            feat.setAttribute("ref",       tags.get("ref", ""))
+            feat.setAttribute("surface",   tags.get("surface", ""))
+            feat.setAttribute("tracktype", tags.get("tracktype", ""))
+            features.append(feat)
+
+        provider.addFeatures(features)
+        mem_layer.updateExtents()
+
+        QgsMessageLog.logMessage(
+            f"OSM Routes : {len(features)} tronçons chargés pour {code_insee}",
+            "CheminsRuraux",
+            Qgis.Info
         )
 
-        # Chemin d'exploitation (CE) - Vert
-        sym_ce = QgsLineSymbol.createSimple({
-            'color': '#2ca02c',
-            'width': '0.6',
-            'capstyle': 'round',
-            'joinstyle': 'round'
-        })
-        cat_ce = QgsRendererCategory('CE', sym_ce, 'Chemin d\'exploitation (CE)')
+        self._remove_layers_by_name(layer_name)
+        QgsProject.instance().addMapLayer(mem_layer)
+        self._style_osm_layer(mem_layer)
+        return True, mem_layer
 
-        # Chemin rural (C) - Orange/Marron
-        sym_c = QgsLineSymbol.createSimple({
-            'color': '#d46f00',
-            'width': '0.6',
-            'capstyle': 'round',
-            'joinstyle': 'round'
-        })
-        cat_c = QgsRendererCategory('C', sym_c, 'Voie communale (C)')
+    def _style_osm_layer(self, layer):
+        """Applique un style catégorisé par type highway et des étiquettes à la couche OSM."""
+        from qgis.core import QgsCategorizedSymbolRenderer, QgsRendererCategory, QgsLineSymbol
 
-        # Chemin rural (R) - Rouge
-        sym_r = QgsLineSymbol.createSimple({
-            'color': '#d62728',
-            'width': '0.6',
-            'capstyle': 'round',
-            'joinstyle': 'round'
-        })
-        cat_r = QgsRendererCategory('R', sym_r, 'Chemin rural (R)')
+        highway_styles = [
+            ('track',         '#8B6310', '0.5', 'Chemin (track)'),
+            ('path',          '#2ca02c', '0.4', 'Sentier (path)'),
+            ('unclassified',  '#555555', '0.6', 'Voie non classée (unclassified)'),
+            ('residential',   '#888888', '0.5', 'Voie résidentielle (residential)'),
+            ('service',       '#7cafd4', '0.4', 'Voie de service (service)'),
+        ]
 
-        renderer = QgsCategorizedSymbolRenderer(expression, [cat_ce, cat_c, cat_r])
-        layer.setRenderer(renderer)
+        categories = []
+        for value, color, width, label in highway_styles:
+            sym = QgsLineSymbol.createSimple({
+                'color': color,
+                'width': width,
+                'capstyle': 'round',
+                'joinstyle': 'round',
+            })
+            categories.append(QgsRendererCategory(value, sym, label))
 
-        # Étiquettes : afficher le champ 'ref'
+        layer.setRenderer(QgsCategorizedSymbolRenderer('highway', categories))
+
+        # Étiquettes : nom si disponible, sinon ref
         label_settings = QgsPalLayerSettings()
-        label_settings.fieldName = 'ref'
+        label_settings.fieldName = "coalesce(nullif(\"name\",''), nullif(\"ref\",''))"
+        label_settings.isExpression = True
         label_settings.enabled = True
         label_settings.placement = QgsPalLayerSettings.Line
 
