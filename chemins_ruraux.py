@@ -1630,25 +1630,21 @@ class CheminsRuraux:
         )
 
         # ── Étape 3 : jointure et création de la couche polygone ─────────────
-        layer = QgsVectorLayer(
-            "MultiPolygon?crs=EPSG:4326",
-            f"Parcelles MAJIC {code_insee}",
-            "memory"
+        uri = (
+            "MultiPolygon?crs=EPSG:4326"
+            "&field=code_parcelle:string"
+            "&field=denomination:string"
+            "&field=groupe_personne:integer"
+            "&field=forme_juridique:string"
+            "&field=numero_siren:string"
+            "&field=contenance_m2:integer"
+            "&field=nature_culture:string"
+            "&field=adresse:string"
+            "&field=section:string"
+            "&field=numero:string"
         )
+        layer = QgsVectorLayer(uri, f"Parcelles MAJIC {code_insee}", "memory")
         provider = layer.dataProvider()
-        provider.addAttributes([
-            QgsField("code_parcelle",   str),
-            QgsField("denomination",    str),
-            QgsField("groupe_personne", int),
-            QgsField("forme_juridique", str),
-            QgsField("numero_siren",    str),
-            QgsField("contenance_m2",   int),
-            QgsField("nature_culture",  str),
-            QgsField("adresse",         str),
-            QgsField("section",         str),
-            QgsField("numero",          str),
-        ])
-        layer.updateFields()
 
         def geojson_to_qgsgeometry(geom_dict):
             """Convertit un dict GeoJSON geometry en QgsGeometry (Polygon/MultiPolygon)."""
