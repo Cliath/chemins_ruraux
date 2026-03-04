@@ -28,8 +28,8 @@ class CheminsRurauxDialog(QtWidgets.QDialog, Ui_CheminsRurauxDialogBase):
         self._layer_checkboxes = [
             'chkCommune', 'chkBDTopoRoutesNom', 'chkOsmRoutes',
             'chkVoirie', 'chkVoirieDep', 'chkBAN', 'chkMajic',
-            'chkPlanIGN', 'chkWazeTiles', 'chkOsmFR',
-            'chkCadastre', 'chkBDOrtho', 'chkMNTLidar', 'chkPhotoAeriennes',
+            'chkCadastre', 'chkPlanIGN', 'chkBDOrtho', 'chkMNTLidar',
+            'chkOsmFR', 'chkWazeTiles', 'chkPhotoAeriennes',
             'chkScan50_1950', 'chkScanCassini', 'chkScanEtatMajor'
         ]
         # Utiliser 'clicked' (pas 'stateChanged') pour les clics utilisateur sur la case maître

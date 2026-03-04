@@ -152,42 +152,22 @@
        </widget>
       </item>
       <item>
-       <widget class="QCheckBox" name="chkPlanIGN">
-        <property name="text">
-         <string>PLAN IGN J+1</string>
-        </property>
-        <property name="toolTip">
-         <string>Charge le PLAN IGN J+1 (GEOGRAPHICALGRIDSYSTEMS.MAPS.BDUNI.J1) via le WMS IGN Géoplateforme</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="chkWazeTiles">
-        <property name="text">
-         <string>Waze</string>
-        </property>
-        <property name="toolTip">
-         <string>Charge les tuiles XYZ Waze Editor (routes) comme fond de plan raster</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="chkOsmFR">
-        <property name="text">
-         <string>OSM France</string>
-        </property>
-        <property name="toolTip">
-         <string>Charge les tuiles XYZ OpenStreetMap France comme fond de plan raster</string>
-        </property>
-       </widget>
-      </item>
-      <item>
        <widget class="QCheckBox" name="chkCadastre">
         <property name="text">
          <string>Cadastre (10 couches : parcelles, bâtiments, lieux-dits, etc.)</string>
         </property>
         <property name="checked">
          <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="chkPlanIGN">
+        <property name="text">
+         <string>PLAN IGN J+1</string>
+        </property>
+        <property name="toolTip">
+         <string>Charge le PLAN IGN J+1 (GEOGRAPHICALGRIDSYSTEMS.MAPS.BDUNI.J1) via le WMS IGN Géoplateforme</string>
         </property>
        </widget>
       </item>
@@ -208,6 +188,26 @@
         </property>
         <property name="toolTip">
          <string>Charge le MNT issu de LiDAR HD (IGNF_LIDAR-HD_MNT_ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW) via le WMS IGN Géoplateforme</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="chkOsmFR">
+        <property name="text">
+         <string>OSM France</string>
+        </property>
+        <property name="toolTip">
+         <string>Charge les tuiles XYZ OpenStreetMap France comme fond de plan raster</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="chkWazeTiles">
+        <property name="text">
+         <string>Waze</string>
+        </property>
+        <property name="toolTip">
+         <string>Charge les tuiles XYZ Waze Editor (routes) comme fond de plan raster</string>
         </property>
        </widget>
       </item>
