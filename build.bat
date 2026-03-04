@@ -46,20 +46,32 @@ echo.
 
 REM Etape 4 : Publication sur GitHub
 echo [4/4] Publication sur GitHub...
-git add --all
-git diff --cached --quiet
+REM Recherche de git.exe (PATH systeme ou GitHub Desktop)
+set GIT_EXE=
+where git >nul 2>&1
+if !ERRORLEVEL! EQU 0 (
+    set GIT_EXE=git
+) else (
+    for /f "delims=" %%G in ('powershell -NoProfile -Command "Get-ChildItem \"$env:LOCALAPPDATA\GitHubDesktop\" -Recurse -Filter git.exe -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName"') do set GIT_EXE=%%G
+)
+if not defined GIT_EXE (
+    echo AVERTISSEMENT : git non trouve, etape GitHub ignoree
+    goto :deploy
+)
+!GIT_EXE! add --all
+!GIT_EXE! diff --cached --quiet
 if !ERRORLEVEL! EQU 0 (
     echo Rien a committer - working tree propre
 ) else (
     set PYTHONUTF8=1
     python get_commit_message.py > .commit_msg.txt
-    git commit -F .commit_msg.txt
+    !GIT_EXE! commit -F .commit_msg.txt
     del .commit_msg.txt
     if !ERRORLEVEL! NEQ 0 (
         echo Erreur lors du commit
         exit /b 1
     )
-    git push
+    !GIT_EXE! push
     if !ERRORLEVEL! NEQ 0 (
         echo Erreur lors du push
         exit /b 1
@@ -68,6 +80,7 @@ if !ERRORLEVEL! EQU 0 (
 )
 echo.
 
+:deploy
 REM Etape 5 : Deploiement automatique dans QGIS
 set QGIS_PLUGINS=%APPDATA%\QGIS\QGIS3\profiles\default\python\plugins\chemins_ruraux
 echo [5/5] Deploiement vers %QGIS_PLUGINS%...
