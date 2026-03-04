@@ -1163,34 +1163,35 @@ class CheminsRuraux:
                        bbox=None, style_callback=None, geom_field="geom"):
         """Méthode générique pour charger une couche WFS depuis l'IGN Géoplateforme.
 
+        Utilise le format URI natif QGIS WFS (url=...) pour éviter que QGIS n'ajoute
+        son propre paramètre BBOX par-dessus le CQL_FILTER, ce qui provoquerait
+        une erreur serveur "bbox and cql_filter both specified but are mutually exclusive".
+
         Args:
             typename: Nom de la couche WFS (ex: LIMITES_ADMINISTRATIVES_EXPRESS.LATEST:commune)
             layer_name: Nom à donner à la couche dans QGIS
             code_insee: Code INSEE pour le filtre CQL (optionnel)
             crs: Système de coordonnées (défaut: EPSG:4326)
-            bbox: Emprise pour filtre BBOX (tuple: xmin, ymin, xmax, ymax) (optionnel)
+            bbox: Emprise pour filtre BBOX via CQL_FILTER (tuple: xmin, ymin, xmax, ymax) (optionnel)
             style_callback: Fonction optionnelle à appeler pour styliser la couche
             geom_field: Nom du champ géométrie pour le filtre BBOX (défaut: "geom")
 
         Returns:
             tuple: (bool, QgsVectorLayer ou None) - (succès, couche chargée)
         """
+        # Format URI natif QGIS WFS : url=BASE_URL&typename=...&version=...&srsname=...
+        # (pas de ?service=WFS&request=GetFeature — QGIS les gère en interne)
+        uri_string = (
+            f"url={self.WFS_IGN_URL}"
+            f"&typename={typename}"
+            f"&version=2.0.0"
+            f"&srsname={crs}"
+        )
         if bbox:
             xmin, ymin, xmax, ymax = bbox
-            uri_string = (
-                f"{self.WFS_IGN_URL}?"
-                f"service=WFS&version=2.0.0&request=GetFeature&"
-                f"typename={typename}&srsname={crs}&"
-                f"CQL_FILTER=BBOX({geom_field},{xmin},{ymin},{xmax},{ymax},'{crs}')"
-            )
-        else:
-            uri_string = (
-                f"{self.WFS_IGN_URL}?"
-                f"service=WFS&version=2.0.0&request=GetFeature&"
-                f"typename={typename}&srsname={crs}"
-            )
-            if code_insee:
-                uri_string += f"&CQL_FILTER=code_insee='{code_insee}'"
+            uri_string += f"&CQL_FILTER=BBOX({geom_field},{xmin},{ymin},{xmax},{ymax},'{crs}')"
+        elif code_insee:
+            uri_string += f"&CQL_FILTER=code_insee='{code_insee}'"
 
         QgsMessageLog.logMessage(f"Chargement WFS: {layer_name}", "CheminsRuraux", Qgis.Info)
 
@@ -1416,129 +1417,26 @@ class CheminsRuraux:
         
         return success, layer
     
-    def _load_dgcl_wfs_bbox(self, typename, layer_name, bbox):
-        """Télécharge une couche DGCL via WFS+BBOX direct (urllib), crée une couche mémoire.
-
-        Les couches DGCL n'ont pas de champ code_insee — seul le BBOX est utilisable.
-        On contourne le provider WFS QGIS (qui ajoute son propre BBOX en conflit) en
-        téléchargeant directement le GeoJSON via urllib.
-
-        Args:
-            typename: Ex. 'DGCL.2025:voirie_communale'
-            layer_name: Nom de la couche dans QGIS
-            bbox: tuple (xmin, ymin, xmax, ymax) en EPSG:4326
-
-        Returns:
-            tuple: (bool, QgsVectorLayer ou None)
-        """
-        xmin, ymin, xmax, ymax = bbox
-        url = (
-            f"{self.WFS_IGN_URL}?"
-            f"service=WFS&version=2.0.0&request=GetFeature"
-            f"&typename={typename}"
-            f"&srsname=EPSG:4326"
-            f"&outputFormat=application/json"
-            f"&BBOX={xmin},{ymin},{xmax},{ymax},EPSG:4326"
-        )
-        QgsMessageLog.logMessage(f"DGCL WFS direct: {url}", "CheminsRuraux", Qgis.Info)
-
-        try:
-            with urllib.request.urlopen(url, timeout=60) as resp:
-                payload = resp.read().decode("utf-8")
-        except Exception as exc:
-            QgsMessageLog.logMessage(
-                f"Erreur téléchargement DGCL {typename}: {exc}",
-                "CheminsRuraux", Qgis.Warning
-            )
-            return False, None
-
-        try:
-            data = json.loads(payload)
-        except Exception as exc:
-            QgsMessageLog.logMessage(
-                f"Erreur parsing JSON DGCL {typename}: {exc}",
-                "CheminsRuraux", Qgis.Warning
-            )
-            return False, None
-
-        features = data.get("features", [])
-        if not features:
-            QgsMessageLog.logMessage(
-                f"DGCL {typename} : aucune entité dans l'emprise",
-                "CheminsRuraux", Qgis.Warning
-            )
-            return False, None
-
-        uri = (
-            "LineString?crs=EPSG:4326"
-            "&field=cleabs:string"
-            "&field=nature:string"
-            "&field=nature_de_la_restriction:string"
-            "&field=importance:string"
-            "&field=cpx_classement_administratif:string"
-        )
-        mem_layer = QgsVectorLayer(uri, layer_name, "memory")
-        provider = mem_layer.dataProvider()
-
-        qgs_features = []
-        for feat in features:
-            geom_dict = feat.get("geometry")
-            if not geom_dict:
-                continue
-            props = feat.get("properties") or {}
-            gtype = geom_dict.get("type", "")
-            coords = geom_dict.get("coordinates", [])
-
-            if gtype == "LineString":
-                lines = [[QgsPointXY(x, y) for x, y in coords]]
-            elif gtype == "MultiLineString":
-                lines = [[QgsPointXY(x, y) for x, y in part] for part in coords]
-            else:
-                continue
-
-            for pts in lines:
-                if len(pts) < 2:
-                    continue
-                qf = QgsFeature(mem_layer.fields())
-                qf.setGeometry(QgsGeometry.fromPolylineXY(pts))
-                qf.setAttribute("cleabs",                        props.get("cleabs", "") or "")
-                qf.setAttribute("nature",                        props.get("nature", "") or "")
-                qf.setAttribute("nature_de_la_restriction",      props.get("nature_de_la_restriction", "") or "")
-                qf.setAttribute("importance",                    props.get("importance", "") or "")
-                qf.setAttribute("cpx_classement_administratif",  props.get("cpx_classement_administratif", "") or "")
-                qgs_features.append(qf)
-
-        if not qgs_features:
-            QgsMessageLog.logMessage(
-                f"DGCL {typename} : aucune géométrie valide",
-                "CheminsRuraux", Qgis.Warning
-            )
-            return False, None
-
-        provider.addFeatures(qgs_features)
-        mem_layer.updateExtents()
-        QgsMessageLog.logMessage(
-            f"✓ {layer_name} : {len(qgs_features)} tronçon(s)",
-            "CheminsRuraux", Qgis.Success
-        )
-        return True, mem_layer
-
     def load_voirie_wfs(self, code_insee, bbox=None):
-        """Charge la voirie communale depuis le WFS DGCL"""
-        layer_name = f"DGCL Voirie communale retenue DSR 2025 {code_insee}"
-        success, layer = self._load_dgcl_wfs_bbox("DGCL.2025:voirie_communale", layer_name, bbox)
-        if success and layer:
-            self._remove_layers_by_name(layer_name)
-            QgsProject.instance().addMapLayer(layer)
+        """Charge la voirie communale depuis le WFS DGCL (filtre BBOX)."""
+        success, layer = self.load_wfs_layer(
+            typename="DGCL.2025:voirie_communale",
+            layer_name=f"DGCL Voirie communale retenue DSR 2025 {code_insee}",
+            crs="EPSG:4326",
+            bbox=bbox,
+            geom_field="geom"
+        )
         return success, layer
 
     def load_voirie_dep_wfs(self, code_insee, bbox=None):
-        """Charge la voirie départementale depuis le WFS DGCL"""
-        layer_name = f"DGCL Voirie départementale retenue DGF 2025 {code_insee}"
-        success, layer = self._load_dgcl_wfs_bbox("DGCL.2025:voirie_departementale", layer_name, bbox)
-        if success and layer:
-            self._remove_layers_by_name(layer_name)
-            QgsProject.instance().addMapLayer(layer)
+        """Charge la voirie départementale depuis le WFS DGCL (filtre BBOX)."""
+        success, layer = self.load_wfs_layer(
+            typename="DGCL.2025:voirie_departementale",
+            layer_name=f"DGCL Voirie départementale retenue DGF 2025 {code_insee}",
+            crs="EPSG:4326",
+            bbox=bbox,
+            geom_field="geom"
+        )
         return success, layer
 
 
