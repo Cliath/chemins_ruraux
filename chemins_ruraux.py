@@ -1161,71 +1161,96 @@ class CheminsRuraux:
 
     def load_wfs_layer(self, typename, layer_name, code_insee=None, crs="EPSG:4326",
                        bbox=None, style_callback=None, geom_field="geom"):
-        """Méthode générique pour charger une couche WFS depuis l'IGN Géoplateforme.
+        """Charge une couche WFS depuis l'IGN Géoplateforme.
 
-        Args:
-            typename: Nom de la couche WFS (ex: LIMITES_ADMINISTRATIVES_EXPRESS.LATEST:commune)
-            layer_name: Nom à donner à la couche dans QGIS
-            code_insee: Code INSEE pour le filtre CQL (optionnel)
-            crs: Système de coordonnées (défaut: EPSG:4326)
-            bbox: Emprise pour filtre BBOX (tuple: xmin, ymin, xmax, ymax) (optionnel)
-            style_callback: Fonction optionnelle à appeler pour styliser la couche
-            geom_field: Nom du champ géométrie pour le filtre BBOX (défaut: "geom")
-
-        Returns:
-            tuple: (bool, QgsVectorLayer ou None) - (succès, couche chargée)
+        Deux chemins selon le type de filtre :
+        - code_insee : URL HTTP GetFeature + CQL_FILTER (provider WFS QGIS)
+        - bbox       : urllib direct + GeoJSON fichier + provider OGR
+                       (le provider WFS QGIS ajoute toujours BBOX=-90,-180,90,180
+                        ce qui provoque un conflit ou ignore le CQL_FILTER)
         """
+        if bbox:
+            return self._load_wfs_bbox(typename, layer_name, bbox, crs, geom_field, style_callback)
+
+        # --- Chemin code_insee : provider WFS QGIS ---
         uri_string = (
             f"{self.WFS_IGN_URL}?"
             f"service=WFS&version=2.0.0&request=GetFeature&"
             f"typename={typename}&srsname={crs}"
         )
-        if bbox:
-            xmin, ymin, xmax, ymax = bbox
-            uri_string += f"&CQL_FILTER=BBOX({geom_field},{xmin},{ymin},{xmax},{ymax},'{crs}')"
-        elif code_insee:
+        if code_insee:
             uri_string += f"&CQL_FILTER=code_insee='{code_insee}'"
 
-        QgsMessageLog.logMessage(f"Chargement WFS: {layer_name}", "CheminsRuraux", Qgis.Info)
-
-        # Créer la couche WFS
+        QgsMessageLog.logMessage(f"WFS code_insee: {uri_string}", "CheminsRuraux", Qgis.Info)
         wfs_layer = QgsVectorLayer(uri_string, layer_name, "WFS")
-        
+
         if wfs_layer.isValid() and wfs_layer.featureCount() > 0:
             self._remove_layers_by_name(layer_name)
             QgsProject.instance().addMapLayer(wfs_layer)
-            
-            # Appliquer le style personnalisé si fourni
             if style_callback:
                 style_callback(wfs_layer)
-            
-            QgsMessageLog.logMessage(
-                f"✓ {layer_name} chargée ({wfs_layer.featureCount()} entité(s))",
-                "CheminsRuraux",
-                Qgis.Success
-            )
-            
+            QgsMessageLog.logMessage(f"✓ {layer_name} ({wfs_layer.featureCount()} entité(s))", "CheminsRuraux", Qgis.Success)
             return True, wfs_layer
         else:
-            QgsMessageLog.logMessage(
-                f"✗ Impossible de charger {layer_name} pour {code_insee}",
-                "CheminsRuraux",
-                Qgis.Warning
-            )
-            if wfs_layer.isValid():
-                QgsMessageLog.logMessage(
-                    f"La couche existe mais aucune entité trouvée (featureCount = 0)",
-                    "CheminsRuraux",
-                    Qgis.Warning
-                )
-            else:
-                QgsMessageLog.logMessage(
-                    f"Erreur WFS : {wfs_layer.error().message()}",
-                    "CheminsRuraux",
-                    Qgis.Warning
-                )
-            
+            QgsMessageLog.logMessage(f"✗ {layer_name} : {wfs_layer.error().message()}", "CheminsRuraux", Qgis.Warning)
             return False, None
+
+    def _load_wfs_bbox(self, typename, layer_name, bbox, crs="EPSG:4326", geom_field="geom", style_callback=None):
+        """Charge une couche WFS filtrée par BBOX via urllib + fichier GeoJSON (provider OGR).
+
+        Contournement nécessaire car le provider WFS QGIS ajoute automatiquement
+        BBOX=-90,-180,90,180 qui entre en conflit avec CQL_FILTER=BBOX(...).
+        Le résultat est un fichier GeoJSON dans le dossier cache/ du plugin,
+        chargé via le provider OGR : couche liée à un fichier, non marquée temporaire.
+        """
+        xmin, ymin, xmax, ymax = bbox
+        url = (
+            f"{self.WFS_IGN_URL}?"
+            f"service=WFS&version=2.0.0&request=GetFeature"
+            f"&typename={typename}&srsname={crs}"
+            f"&outputFormat=application/json"
+            f"&CQL_FILTER=BBOX({geom_field},{xmin},{ymin},{xmax},{ymax},'{crs}')"
+        )
+        QgsMessageLog.logMessage(f"WFS BBOX urllib: {url}", "CheminsRuraux", Qgis.Info)
+
+        try:
+            with urllib.request.urlopen(url, timeout=60) as resp:
+                payload = resp.read().decode("utf-8")
+        except Exception as exc:
+            QgsMessageLog.logMessage(f"✗ Téléchargement WFS BBOX {typename}: {exc}", "CheminsRuraux", Qgis.Warning)
+            return False, None
+
+        try:
+            data = json.loads(payload)
+        except Exception as exc:
+            QgsMessageLog.logMessage(f"✗ Parsing JSON {typename}: {exc}", "CheminsRuraux", Qgis.Warning)
+            return False, None
+
+        if not data.get("features"):
+            QgsMessageLog.logMessage(f"✗ Aucune entité dans l'emprise pour {typename}", "CheminsRuraux", Qgis.Warning)
+            return False, None
+
+        # Sauvegarder dans cache/ du plugin (couche fichier, non temporaire dans QGIS)
+        cache_dir = os.path.join(os.path.dirname(__file__), "cache")
+        os.makedirs(cache_dir, exist_ok=True)
+        safe_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in layer_name)
+        cache_path = os.path.join(cache_dir, f"{safe_name}.geojson")
+
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+
+        layer = QgsVectorLayer(cache_path, layer_name, "ogr")
+        if not layer.isValid():
+            QgsMessageLog.logMessage(f"✗ Couche OGR invalide: {cache_path}", "CheminsRuraux", Qgis.Warning)
+            return False, None
+
+        self._remove_layers_by_name(layer_name)
+        QgsProject.instance().addMapLayer(layer)
+        if style_callback:
+            style_callback(layer)
+        QgsMessageLog.logMessage(f"✓ {layer_name} ({layer.featureCount()} entité(s))", "CheminsRuraux", Qgis.Success)
+        return True, layer
+
     
     def load_commune_wfs(self, code_insee):
         """Charge l'emprise de la commune depuis le WFS Admin Express IGN
