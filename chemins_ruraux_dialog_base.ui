@@ -100,7 +100,7 @@
         <string>Routes OSM (Overpass)</string>
         </property>
         <property name="toolTip">
-         <string>Charge les chemins (track), sentiers (path) et voies non classées OSM dans le périmètre exact de la commune (relation OSM ref:INSEE)&#10;© contributeurs OpenStreetMap — ODbL 1.0</string>
+         <string>Télécharge les routes OSM filtrées sur la commune&#10;© contributeurs OpenStreetMap — ODbL 1.0</string>
         </property>
        </widget>
       </item>
