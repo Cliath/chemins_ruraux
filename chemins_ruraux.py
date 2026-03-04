@@ -1200,26 +1200,35 @@ class CheminsRuraux:
             return False, None
 
     def _load_wfs_bbox(self, typename, layer_name, bbox, crs="EPSG:4326", geom_field="geom", style_callback=None):
-        """Charge une couche WFS filtrée par BBOX via /vsicurl/ (provider OGR, aucun fichier disque).
+        """Charge une couche WFS filtrée par BBOX via urllib + /vsimem/ (RAM GDAL, aucun fichier disque).
 
-        /vsicurl/ est le système de fichiers virtuel HTTP de GDAL : le flux GeoJSON est lu
-        directement depuis le réseau, sans aucun fichier créé sur le disque.
-        Le provider WFS QGIS est contourné car il surcharge le BBOX avec -90,-180,90,180.
+        urllib télécharge le GeoJSON, gdal.FileFromMemBuffer l'écrit dans la RAM de GDAL (/vsimem/),
+        OGR lit depuis la RAM. Aucun fichier créé sur le disque.
         """
+        from osgeo import gdal
+
         xmin, ymin, xmax, ymax = bbox
-        # Paramètre BBOX natif WFS : pas de CQL_FILTER, pas de caractères spéciaux à encoder
-        http_url = (
+        url = (
             f"{self.WFS_IGN_URL}?"
             f"service=WFS&version=2.0.0&request=GetFeature"
             f"&typename={typename}&srsname={crs}"
             f"&outputFormat=application/json"
             f"&BBOX={xmin},{ymin},{xmax},{ymax},{crs}"
         )
-        vsicurl_url = f"/vsicurl/{http_url}"
-        QgsMessageLog.logMessage(f"WFS BBOX vsicurl: {http_url}", "CheminsRuraux", Qgis.Info)
+        QgsMessageLog.logMessage(f"WFS BBOX: {url}", "CheminsRuraux", Qgis.Info)
 
-        layer = QgsVectorLayer(vsicurl_url, layer_name, "ogr")
+        try:
+            with urllib.request.urlopen(url, timeout=60) as resp:
+                payload = resp.read()
+        except Exception as exc:
+            QgsMessageLog.logMessage(f"✗ Téléchargement WFS BBOX {typename}: {exc}", "CheminsRuraux", Qgis.Warning)
+            return False, None
+
+        vsimem_path = f"/vsimem/{typename.replace(':', '_').replace('.', '_')}.json"
+        gdal.FileFromMemBuffer(vsimem_path, payload)
+        layer = QgsVectorLayer(vsimem_path, layer_name, "ogr")
         if not layer.isValid() or layer.featureCount() == 0:
+            gdal.Unlink(vsimem_path)
             QgsMessageLog.logMessage(f"✗ {layer_name} : couche invalide ou vide", "CheminsRuraux", Qgis.Warning)
             return False, None
 
