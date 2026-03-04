@@ -1443,6 +1443,15 @@ class CheminsRuraux:
         Returns:
             tuple: (bool, QgsVectorLayer ou None) - (succès, couche chargée)
         """
+        if not bbox:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Emprise communale manquante",
+                "Impossible de calculer le BBOX pour la voirie communale DGCL.\n"
+                "Chargez l'emprise communale ou vérifiez le code INSEE."
+            )
+            return False, None
+
         success, layer = self.load_wfs_layer(
             typename="DGCL.2025:voirie_communale",
             layer_name=f"DGCL Voirie communale retenue DSR 2025 {code_insee}",
@@ -1478,6 +1487,15 @@ class CheminsRuraux:
         Returns:
             tuple: (bool, QgsVectorLayer ou None) - (succès, couche chargée)
         """
+        if not bbox:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Emprise communale manquante",
+                "Impossible de calculer le BBOX pour la voirie départementale DGCL.\n"
+                "Chargez l'emprise communale ou vérifiez le code INSEE."
+            )
+            return False, None
+
         success, layer = self.load_wfs_layer(
             typename="DGCL.2025:voirie_departementale",
             layer_name=f"DGCL Voirie départementale retenue DGF 2025 {code_insee}",
