@@ -80,7 +80,7 @@
          <string>Emprise communale (Admin Express IGN)</string>
         </property>
         <property name="toolTip">
-         <string>Charge le contour de la commune (Admin Express COG IGN) filtré sur le code INSEE saisi</string>
+         <string>Charge le contour de la commune (Admin Express COG IGN) filtré sur le code INSEE saisi&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
         </property>
        </widget>
       </item>
@@ -90,7 +90,7 @@
         <string>Routes numérotées ou nommées (BD TOPO® IGN)</string>
         </property>
         <property name="toolTip">
-         <string>Charge les routes numérotées ou nommées (BDTOPO_V3:route_numerotee_ou_nommee) filtrées sur l'emprise de la commune</string>
+         <string>Charge les routes numérotées ou nommées (BDTOPO_V3:route_numerotee_ou_nommee) filtrées sur l'emprise de la commune&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
         </property>
        </widget>
       </item>
@@ -100,7 +100,7 @@
         <string>Routes OSM (Overpass)</string>
         </property>
         <property name="toolTip">
-         <string>Télécharge les routes OSM filtrées sur la commune</string>
+         <string>Télécharge les routes OSM filtrées sur la commune&#10;© contributeurs OpenStreetMap — ODbL 1.0</string>
         </property>
        </widget>
       </item>
@@ -110,7 +110,7 @@
          <string>Voirie communale (DGCL 2025)</string>
         </property>
         <property name="toolTip">
-         <string>Charge le réseau de voirie communale (calcul IGN pour la DGCL)</string>
+         <string>Charge le réseau de voirie communale (calcul IGN pour la DGCL)&#10;Licence Ouverte 2.0 (Etalab) — © IGN / DGCL</string>
         </property>
        </widget>
       </item>
@@ -120,7 +120,7 @@
          <string>Voirie départementale (DGCL 2025)</string>
         </property>
         <property name="toolTip">
-         <string>Charge le réseau de voirie départementale (calcul IGN pour la DGCL)</string>
+         <string>Charge le réseau de voirie départementale (calcul IGN pour la DGCL)&#10;Licence Ouverte 2.0 (Etalab) — © IGN / DGCL</string>
         </property>
        </widget>
       </item>
@@ -130,7 +130,7 @@
          <string>Adresses (Base Adresse Nationale - BAN)</string>
         </property>
         <property name="toolTip">
-         <string>Charge toutes les adresses de la commune (peut être lent pour les grandes villes)</string>
+         <string>Charge toutes les adresses de la commune (peut être lent pour les grandes villes)&#10;Licence Ouverte 2.0 (Etalab) — © DINUM / collectivités</string>
         </property>
        </widget>
       </item>
@@ -140,7 +140,7 @@
         <string>Parcelles personnes morales (MAJIC)</string>
         </property>
         <property name="toolTip">
-         <string>Charge les parcelles cadastrales détenues par des personnes morales (données DGFiP via Koumoul)</string>
+         <string>Charge les parcelles cadastrales détenues par des personnes morales (données DGFiP via Koumoul)&#10;Licence Ouverte 2.0 (Etalab) — © DGFiP</string>
         </property>
        </widget>
       </item>
@@ -160,7 +160,7 @@
          <string>Cadastre (10 couches : parcelles, bâtiments, lieux-dits, etc.)</string>
         </property>
         <property name="toolTip">
-         <string>Charge les 10 couches du cadastre (parcelles, bâtiments, lieux-dits, sections, communes, subdivisions fiscales, etc.) via le WMS DGFiP</string>
+         <string>Charge les 10 couches du cadastre (parcelles, bâtiments, lieux-dits, sections, communes, subdivisions fiscales, etc.) via le WMS DGFiP&#10;Licence Ouverte 2.0 (Etalab) — © DGFiP</string>
         </property>
         <property name="checked">
          <bool>true</bool>
@@ -173,7 +173,7 @@
          <string>PLAN IGN J+1</string>
         </property>
         <property name="toolTip">
-         <string>Charge le PLAN IGN J+1 (GEOGRAPHICALGRIDSYSTEMS.MAPS.BDUNI.J1) via le WMS IGN Géoplateforme</string>
+         <string>Charge le PLAN IGN J+1 (GEOGRAPHICALGRIDSYSTEMS.MAPS.BDUNI.J1) via le WMS IGN Géoplateforme&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
         </property>
        </widget>
       </item>
@@ -183,7 +183,7 @@
          <string>BD ORTHO® 20 cm</string>
         </property>
         <property name="toolTip">
-         <string>Charge la BD ORTHO® 20 cm (HR.ORTHOIMAGERY.ORTHOPHOTOS) via le WMS IGN Géoplateforme</string>
+         <string>Charge la BD ORTHO® 20 cm (HR.ORTHOIMAGERY.ORTHOPHOTOS) via le WMS IGN Géoplateforme&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
         </property>
        </widget>
       </item>
@@ -193,7 +193,7 @@
          <string>MNT LiDAR HD</string>
         </property>
         <property name="toolTip">
-         <string>Charge le MNT issu de LiDAR HD (IGNF_LIDAR-HD_MNT_ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW) via le WMS IGN Géoplateforme</string>
+         <string>Charge le MNT issu de LiDAR HD (IGNF_LIDAR-HD_MNT_ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW) via le WMS IGN Géoplateforme&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
         </property>
        </widget>
       </item>
@@ -203,7 +203,7 @@
          <string>OSM France</string>
         </property>
         <property name="toolTip">
-         <string>Charge les tuiles XYZ OpenStreetMap France comme fond de plan raster</string>
+         <string>Charge les tuiles XYZ OpenStreetMap France comme fond de plan raster&#10;© contributeurs OpenStreetMap — ODbL 1.0</string>
         </property>
        </widget>
       </item>
@@ -213,7 +213,7 @@
          <string>Waze</string>
         </property>
         <property name="toolTip">
-         <string>Charge les tuiles XYZ Waze Editor (routes) comme fond de plan raster</string>
+         <string>Charge les tuiles XYZ Waze Editor (routes) comme fond de plan raster&#10;© Waze — usage non commercial uniquement</string>
         </property>
        </widget>
       </item>
@@ -223,7 +223,7 @@
          <string>Photographies aériennes historiques...</string>
         </property>
         <property name="toolTip">
-         <string>Ouvre une fenêtre de sélection des photographies aériennes historiques IGN (1950-2023)</string>
+         <string>Ouvre une fenêtre de sélection des photographies aériennes historiques IGN (1950-2023)&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
         </property>
        </widget>
       </item>
@@ -233,7 +233,7 @@
          <string>SCAN 50® 1950 IGN</string>
         </property>
         <property name="toolTip">
-         <string>Charge le SCAN 50 de 1950 depuis la Géoplateforme IGN</string>
+         <string>Charge le SCAN 50 de 1950 depuis la Géoplateforme IGN&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
         </property>
        </widget>
       </item>
@@ -243,7 +243,7 @@
          <string>Carte de Cassini IGN (XVIIIe siècle)</string>
         </property>
         <property name="toolTip">
-         <string>Charge le scan de la carte de Cassini (première carte de France au 1/86400e, XVIIIe siècle) depuis la Géoplateforme IGN</string>
+         <string>Charge le scan de la carte de Cassini (première carte de France au 1/86400e, XVIIIe siècle) depuis la Géoplateforme IGN&#10;Domaine public — scan © IGN (Licence Ouverte 2.0)</string>
         </property>
        </widget>
       </item>
@@ -253,7 +253,7 @@
          <string>Carte d'État-Major IGN (1820-1866)</string>
         </property>
         <property name="toolTip">
-         <string>Charge le scan de la carte d'État-Major (relevés entre 1820 et 1866) depuis la Géoplateforme IGN</string>
+         <string>Charge le scan de la carte d'État-Major (relevés entre 1820 et 1866) depuis la Géoplateforme IGN&#10;Domaine public — scan © IGN (Licence Ouverte 2.0)</string>
         </property>
        </widget>
       </item>
