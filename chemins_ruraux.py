@@ -1196,52 +1196,26 @@ class CheminsRuraux:
             return False, None
 
     def _load_wfs_bbox(self, typename, layer_name, bbox, crs="EPSG:4326", geom_field="geom", style_callback=None):
-        """Charge une couche WFS filtrée par BBOX via urllib + fichier GeoJSON (provider OGR).
+        """Charge une couche WFS filtrée par BBOX via /vsicurl/ (provider OGR, aucun fichier disque).
 
-        Contournement nécessaire car le provider WFS QGIS ajoute automatiquement
-        BBOX=-90,-180,90,180 qui entre en conflit avec CQL_FILTER=BBOX(...).
-        Le résultat est un fichier GeoJSON dans le dossier cache/ du plugin,
-        chargé via le provider OGR : couche liée à un fichier, non marquée temporaire.
+        /vsicurl/ est le système de fichiers virtuel HTTP de GDAL : le flux GeoJSON est lu
+        directement depuis le réseau, sans aucun fichier créé sur le disque.
+        Le provider WFS QGIS est contourné car il surcharge le BBOX avec -90,-180,90,180.
         """
         xmin, ymin, xmax, ymax = bbox
-        url = (
+        http_url = (
             f"{self.WFS_IGN_URL}?"
             f"service=WFS&version=2.0.0&request=GetFeature"
             f"&typename={typename}&srsname={crs}"
             f"&outputFormat=application/json"
             f"&CQL_FILTER=BBOX({geom_field},{xmin},{ymin},{xmax},{ymax},'{crs}')"
         )
-        QgsMessageLog.logMessage(f"WFS BBOX urllib: {url}", "CheminsRuraux", Qgis.Info)
+        vsicurl_url = f"/vsicurl/{http_url}"
+        QgsMessageLog.logMessage(f"WFS BBOX vsicurl: {http_url}", "CheminsRuraux", Qgis.Info)
 
-        try:
-            with urllib.request.urlopen(url, timeout=60) as resp:
-                payload = resp.read().decode("utf-8")
-        except Exception as exc:
-            QgsMessageLog.logMessage(f"✗ Téléchargement WFS BBOX {typename}: {exc}", "CheminsRuraux", Qgis.Warning)
-            return False, None
-
-        try:
-            data = json.loads(payload)
-        except Exception as exc:
-            QgsMessageLog.logMessage(f"✗ Parsing JSON {typename}: {exc}", "CheminsRuraux", Qgis.Warning)
-            return False, None
-
-        if not data.get("features"):
-            QgsMessageLog.logMessage(f"✗ Aucune entité dans l'emprise pour {typename}", "CheminsRuraux", Qgis.Warning)
-            return False, None
-
-        # Sauvegarder dans cache/ du plugin (couche fichier, non temporaire dans QGIS)
-        cache_dir = os.path.join(os.path.dirname(__file__), "cache")
-        os.makedirs(cache_dir, exist_ok=True)
-        safe_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in layer_name)
-        cache_path = os.path.join(cache_dir, f"{safe_name}.geojson")
-
-        with open(cache_path, "w", encoding="utf-8") as f:
-            json.dump(data, f)
-
-        layer = QgsVectorLayer(cache_path, layer_name, "ogr")
-        if not layer.isValid():
-            QgsMessageLog.logMessage(f"✗ Couche OGR invalide: {cache_path}", "CheminsRuraux", Qgis.Warning)
+        layer = QgsVectorLayer(vsicurl_url, layer_name, "ogr")
+        if not layer.isValid() or layer.featureCount() == 0:
+            QgsMessageLog.logMessage(f"✗ {layer_name} : couche invalide ou vide", "CheminsRuraux", Qgis.Warning)
             return False, None
 
         self._remove_layers_by_name(layer_name)
