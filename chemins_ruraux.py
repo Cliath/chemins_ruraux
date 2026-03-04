@@ -1109,7 +1109,10 @@ class CheminsRuraux:
         return None
 
     def _group_commune_layers(self, code_insee, commune_name=None):
-        """Regroupe toutes les couches liées au code INSEE dans un groupe dédié.
+        """Regroupe les couches de données spécifiques à la commune dans un groupe dédié.
+
+        Seules les couches filtrées sur la commune (vecteurs + cadastre) sont regroupées.
+        Les fonds raster communs (PLAN IGN, Waze, BD ORTHO, etc.) restent à la racine.
 
         Le groupe est nommé "{code_insee} - {nom_commune}" ou "{code_insee}" si le nom est inconnu.
         S'il existait déjà un groupe avec ce nom, il est remplacé.
@@ -1118,6 +1121,7 @@ class CheminsRuraux:
 
         group_name = f"{code_insee} - {commune_name}" if commune_name else code_insee
 
+        # Uniquement les couches spécifiques à la commune (filtrées sur le code INSEE)
         canonical_names = {
             f"BD TOPO Routes num\u00e9rot\u00e9es ou nomm\u00e9es {code_insee}",
             f"DGCL Voirie communale retenue DSR 2025 {code_insee}",
@@ -1126,23 +1130,7 @@ class CheminsRuraux:
             f"Adresses BAN {code_insee}",
             f"Parcelles MAJIC {code_insee}",
             f"Commune {code_insee}",
-            "PLAN IGN J+1",
-            "Waze",
-            "OSM France",
             f"Cadastre - {code_insee}",
-            "BD ORTHO\u00ae 20 cm",
-            "MNT LiDAR HD",
-            "Photos a\u00e9riennes 1950-1965",
-            "Photos a\u00e9riennes 1965-1980",
-            "Photos a\u00e9riennes 1980-1995",
-            "Photos a\u00e9riennes 2000-2005",
-            "Photos a\u00e9riennes 2006-2010",
-            "Photos a\u00e9riennes 2011-2015",
-            "Photos a\u00e9riennes 2016-2020",
-            "Photos a\u00e9riennes 2021-2023",
-            "SCAN 50\u00ae 1950",
-            "Carte de Cassini",
-            "Carte d'\u00c9tat-Major",
         }
 
         # Supprimer un éventuel groupe existant avec le même nom
