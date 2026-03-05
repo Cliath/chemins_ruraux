@@ -988,18 +988,15 @@ class CheminsRuraux:
 
         Ordre canonique (du haut vers le bas) :
         couches vecteur spécifiques → groupe commune → fonds raster → rasters historiques.
-        Le groupe commune (dont le nom commence par code_insee) est détecté dynamiquement.
+        Le groupe commune (dont le nom commence par code_insee suivi de ' - ' ou fin) est
+        détecté dynamiquement par préfixe.
 
-        Algorithme : collecte tous les enfants de la racine, les trie par position canonique,
-        puis supprime les originaux et réinsère les clones dans le bon ordre.
-        Les items inconnus de l'ordre canonique sont placés en fin de liste.
+        Algorithme : insert-at-0 en ordre inversé — déplace chaque item connu en tête
+        de liste, un par un. Les items inconnus ne sont pas touchés (restent en place).
         """
         root = QgsProject.instance().layerTreeRoot()
-        children = list(root.children())
-        if len(children) <= 1:
-            return
 
-        # Sentinel interne pour le groupe commune (nom dynamique ex: "75056 - Paris")
+        # Sentinel pour le groupe commune (nom dynamique ex: "75056 - Paris")
         _COMMUNE_GROUP_SENTINEL = f"__COMMUNE_GROUP_{code_insee}__"
 
         # Ordre désiré, index 0 = tout en haut du panneau
@@ -1030,43 +1027,33 @@ class CheminsRuraux:
             "Carte de Cassini",
             "Carte d'\u00c9tat-Major",
         ]
-        # Index rapide nom → position (items normaux)
-        canonical_index = {name: i for i, name in enumerate(canonical_order)}
-        _fallback = len(canonical_order) + 1
 
-        def get_position(child):
-            """Retourne la position canonique d'un nœud de l'arbre."""
-            if isinstance(child, QgsLayerTreeGroup):
-                name = child.name()
-                # Groupe commune : nom dynamique, identifié par le préfixe code_insee
-                if name.startswith(code_insee):
-                    return canonical_index.get(_COMMUNE_GROUP_SENTINEL, _fallback)
-                return canonical_index.get(name, _fallback)
-            elif isinstance(child, QgsLayerTreeLayer):
-                layer = child.layer()
-                if layer:
-                    return canonical_index.get(layer.name(), _fallback)
-            return _fallback
-
-        sorted_children = sorted(children, key=get_position)
-
-        # Vérifier si l'ordre est déjà correct (éviter des modifications inutiles)
-        def node_key(child):
-            if isinstance(child, QgsLayerTreeGroup):
-                return ('g', child.name())
-            elif isinstance(child, QgsLayerTreeLayer):
-                return ('l', child.layerId())
-            return ('?', str(id(child)))
-
-        if [node_key(c) for c in children] == [node_key(c) for c in sorted_children]:
-            return  # déjà dans le bon ordre
-
-        # Cloner dans l'ordre souhaité, supprimer les originaux, réinsérer les clones
-        clones = [child.clone() for child in sorted_children]
-        for child in children:
-            root.removeChildNode(child)
-        for clone in clones:
-            root.addChildNode(clone)
+        # Traitement en ordre inversé : chaque item connu est cloné et inséré en position 0.
+        # Après la boucle, le dernier traité (index 0 canonique) se retrouve en tête.
+        # Les items inconnus ne sont jamais touchés, ils restent à leur place courante.
+        for name in reversed(canonical_order):
+            target = None
+            for child in root.children():
+                if isinstance(child, QgsLayerTreeGroup):
+                    if name == _COMMUNE_GROUP_SENTINEL:
+                        # Groupe commune : détecté par préfixe code_insee
+                        cname = child.name()
+                        if cname == code_insee or cname.startswith(code_insee + ' - '):
+                            target = child
+                            break
+                    elif child.name() == name:
+                        target = child
+                        break
+                elif isinstance(child, QgsLayerTreeLayer):
+                    layer = child.layer()
+                    if layer and layer.name() == name:
+                        target = child
+                        break
+            if target is None:
+                continue
+            clone = target.clone()
+            root.insertChildNode(0, clone)
+            root.removeChildNode(target)
 
         QgsMessageLog.logMessage(
             f"Couches r\u00e9ordonn\u00e9es selon l\u2019ordre canonique pour {code_insee}",
@@ -1167,8 +1154,19 @@ class CheminsRuraux:
                     first_idx = i
                 to_move.append(child)
 
-        # Chercher un groupe existant pour cette commune
-        existing_group = root.findGroup(group_name)
+        # Chercher un groupe existant pour cette commune.
+        # On cherche par préfixe code_insee car le nom peut différer si commune_name
+        # n'était pas disponible lors du 1er chargement (ex: "75056" vs "75056 - Paris").
+        existing_group = None
+        for child in root.children():
+            if isinstance(child, QgsLayerTreeGroup):
+                cname = child.name()
+                if cname == code_insee or cname.startswith(code_insee + ' - '):
+                    existing_group = child
+                    # Renommer le groupe si on a maintenant le nom complet
+                    if commune_name and cname == code_insee:
+                        child.setName(group_name)
+                    break
 
         if existing_group:
             # Le groupe existe déjà (rechargement partiel) : ajouter les nouvelles couches
