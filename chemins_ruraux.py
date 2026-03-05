@@ -1102,7 +1102,8 @@ class CheminsRuraux:
         Les fonds raster communs (PLAN IGN, Waze, BD ORTHO, etc.) restent à la racine.
 
         Le groupe est nommé "{code_insee} - {nom_commune}" ou "{code_insee}" si le nom est inconnu.
-        S'il existait déjà un groupe avec ce nom, il est remplacé.
+        Si le groupe existe déjà (rechargement partiel), les nouvelles couches y sont ajoutées
+        sans supprimer les couches du chargement précédent.
         """
         root = QgsProject.instance().layerTreeRoot()
 
@@ -1120,14 +1121,8 @@ class CheminsRuraux:
             f"Cadastre - {code_insee}",
         }
 
-        # Supprimer un éventuel groupe existant avec le même nom
-        # (ses couches ont déjà été supprimées par les méthodes de chargement)
-        for child in list(root.children()):
-            if isinstance(child, QgsLayerTreeGroup) and child.name() == group_name:
-                root.removeChildNode(child)
-                break
-
-        # Identifier les nœuds à déplacer et la position du premier
+        # Identifier les nœuds à la RACINE à déplacer et la position du premier.
+        # On ne touche pas aux nœuds déjà à l'intérieur du groupe existant.
         to_move = []
         first_idx = None
         for i, child in enumerate(root.children()):
@@ -1146,16 +1141,26 @@ class CheminsRuraux:
         if not to_move:
             return
 
-        # Créer le groupe à la position du premier nœud correspondant
-        commune_group = root.insertGroup(first_idx, group_name)
+        # Chercher un groupe existant pour cette commune
+        existing_group = root.findGroup(group_name)
+        if existing_group:
+            # Le groupe existe déjà (rechargement partiel) : ajouter les nouvelles couches
+            # sans supprimer celles qui n'ont pas été rechargées.
+            for node in to_move:
+                clone = node.clone()
+                existing_group.addChildNode(clone)
+                root.removeChildNode(node)
+        else:
+            # Créer le groupe à la position du premier nœud correspondant
+            commune_group = root.insertGroup(first_idx, group_name)
 
-        # Déplacer les nœuds dans le groupe (clone + suppression originale)
-        for node in to_move:
-            clone = node.clone()
-            commune_group.addChildNode(clone)
-            root.removeChildNode(node)
+            # Déplacer les nœuds dans le groupe (clone + suppression originale)
+            for node in to_move:
+                clone = node.clone()
+                commune_group.addChildNode(clone)
+                root.removeChildNode(node)
 
-        commune_group.setExpanded(True)
+            commune_group.setExpanded(True)
 
         QgsMessageLog.logMessage(
             f"Couches regroup\u00e9es dans '{group_name}'",
