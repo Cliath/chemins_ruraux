@@ -987,73 +987,89 @@ class CheminsRuraux:
         """Réordonne les couches chargées dans le panneau selon un ordre canonique.
 
         Ordre canonique (du haut vers le bas) :
-        groupe commune → fonds raster → rasters historiques.
-        Le groupe commune (dont le nom commence par code_insee) est traité comme un
-        nœud spécial positionné entre les couches vecteur spécifiques et les fonds raster.
-        Les couches absentes sont ignorées.
+        couches vecteur spécifiques → groupe commune → fonds raster → rasters historiques.
+        Le groupe commune (dont le nom commence par code_insee) est détecté dynamiquement.
+
+        Algorithme : collecte tous les enfants de la racine, les trie par position canonique,
+        puis supprime les originaux et réinsère les clones dans le bon ordre.
+        Les items inconnus de l'ordre canonique sont placés en fin de liste.
         """
         root = QgsProject.instance().layerTreeRoot()
+        children = list(root.children())
+        if len(children) <= 1:
+            return
 
-        # Sentinel réservé au groupe commune (nom dynamique : "75056 - Nom Commune")
+        # Sentinel interne pour le groupe commune (nom dynamique ex: "75056 - Paris")
         _COMMUNE_GROUP_SENTINEL = f"__COMMUNE_GROUP_{code_insee}__"
 
-        # Ordre désiré : index 0 = tout en haut du panneau
+        # Ordre désiré, index 0 = tout en haut du panneau
         canonical_order = [
-            f"BD TOPO Routes numérotées ou nommées {code_insee}",
+            f"BD TOPO Routes num\u00e9rot\u00e9es ou nomm\u00e9es {code_insee}",
             f"DGCL Voirie communale retenue DSR 2025 {code_insee}",
-            f"DGCL Voirie départementale retenue DGF 2025 {code_insee}",
+            f"DGCL Voirie d\u00e9partementale retenue DGF 2025 {code_insee}",
             f"OSM Routes {code_insee}",
             f"Adresses BAN {code_insee}",
             f"Parcelles MAJIC {code_insee}",
             f"Commune {code_insee}",
-            _COMMUNE_GROUP_SENTINEL,   # groupe "75056 - Nom" positionné ici
+            _COMMUNE_GROUP_SENTINEL,
             "PLAN IGN J+1",
             "Waze",
             "OSM France",
             f"Cadastre - {code_insee}",
             "BD ORTHO\u00ae 20 cm",
             "MNT LiDAR HD",
-            "Photos aériennes 1950-1965",
-            "Photos aériennes 1965-1980",
-            "Photos aériennes 1980-1995",
-            "Photos aériennes 2000-2005",
-            "Photos aériennes 2006-2010",
-            "Photos aériennes 2011-2015",
-            "Photos aériennes 2016-2020",
-            "Photos aériennes 2021-2023",
+            "Photos a\u00e9riennes 1950-1965",
+            "Photos a\u00e9riennes 1965-1980",
+            "Photos a\u00e9riennes 1980-1995",
+            "Photos a\u00e9riennes 2000-2005",
+            "Photos a\u00e9riennes 2006-2010",
+            "Photos a\u00e9riennes 2011-2015",
+            "Photos a\u00e9riennes 2016-2020",
+            "Photos a\u00e9riennes 2021-2023",
             "SCAN 50\u00ae 1950",
             "Carte de Cassini",
             "Carte d'\u00c9tat-Major",
         ]
+        # Index rapide nom → position (items normaux)
+        canonical_index = {name: i for i, name in enumerate(canonical_order)}
+        _fallback = len(canonical_order) + 1
 
-        # Traitement en ordre inversé : on insère successivement en position 0
-        # → le dernier traité se retrouve en tête, soit l'ordre canonique final
-        for name in reversed(canonical_order):
-            target = None
-            for child in root.children():
-                if isinstance(child, QgsLayerTreeGroup):
-                    # Matcher le sentinel : groupe dont le nom commence par code_insee
-                    if name == _COMMUNE_GROUP_SENTINEL and child.name().startswith(code_insee):
-                        target = child
-                        break
-                    elif child.name() == name:
-                        target = child
-                        break
-                elif isinstance(child, QgsLayerTreeLayer):
-                    layer = child.layer()
-                    if layer and layer.name() == name:
-                        target = child
-                        break
-            if target is None:
-                continue
-            # clone() copie le nœud (et ses enfants pour les groupes)
-            # sans dupliquer les objets QgsMapLayer sous-jacents
-            clone = target.clone()
-            root.insertChildNode(0, clone)
-            root.removeChildNode(target)
+        def get_position(child):
+            """Retourne la position canonique d'un nœud de l'arbre."""
+            if isinstance(child, QgsLayerTreeGroup):
+                name = child.name()
+                # Groupe commune : nom dynamique, identifié par le préfixe code_insee
+                if name.startswith(code_insee):
+                    return canonical_index.get(_COMMUNE_GROUP_SENTINEL, _fallback)
+                return canonical_index.get(name, _fallback)
+            elif isinstance(child, QgsLayerTreeLayer):
+                layer = child.layer()
+                if layer:
+                    return canonical_index.get(layer.name(), _fallback)
+            return _fallback
+
+        sorted_children = sorted(children, key=get_position)
+
+        # Vérifier si l'ordre est déjà correct (éviter des modifications inutiles)
+        def node_key(child):
+            if isinstance(child, QgsLayerTreeGroup):
+                return ('g', child.name())
+            elif isinstance(child, QgsLayerTreeLayer):
+                return ('l', child.layerId())
+            return ('?', str(id(child)))
+
+        if [node_key(c) for c in children] == [node_key(c) for c in sorted_children]:
+            return  # déjà dans le bon ordre
+
+        # Cloner dans l'ordre souhaité, supprimer les originaux, réinsérer les clones
+        clones = [child.clone() for child in sorted_children]
+        for child in children:
+            root.removeChildNode(child)
+        for clone in clones:
+            root.addChildNode(clone)
 
         QgsMessageLog.logMessage(
-            f"Couches réordonnées selon l'ordre canonique pour {code_insee}",
+            f"Couches r\u00e9ordonn\u00e9es selon l\u2019ordre canonique pour {code_insee}",
             "CheminsRuraux",
             Qgis.Info
         )

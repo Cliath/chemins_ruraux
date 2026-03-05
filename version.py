@@ -4,8 +4,8 @@ Version management for Voirie Communale plugin
 """
 
 
-__version__ = "0.10.46"
-__version_info__ = (0, 10, 46)
+__version__ = "0.10.47"
+__version_info__ = (0, 10, 47)
 
 VERSION_HISTORY = {
     "0.9.74": {
