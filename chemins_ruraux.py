@@ -987,10 +987,15 @@ class CheminsRuraux:
         """Réordonne les couches chargées dans le panneau selon un ordre canonique.
 
         Ordre canonique (du haut vers le bas) :
-        vecteurs détaillés → emprise → fonds raster → rasters historiques.
+        groupe commune → fonds raster → rasters historiques.
+        Le groupe commune (dont le nom commence par code_insee) est traité comme un
+        nœud spécial positionné entre les couches vecteur spécifiques et les fonds raster.
         Les couches absentes sont ignorées.
         """
         root = QgsProject.instance().layerTreeRoot()
+
+        # Sentinel réservé au groupe commune (nom dynamique : "75056 - Nom Commune")
+        _COMMUNE_GROUP_SENTINEL = f"__COMMUNE_GROUP_{code_insee}__"
 
         # Ordre désiré : index 0 = tout en haut du panneau
         canonical_order = [
@@ -1001,6 +1006,7 @@ class CheminsRuraux:
             f"Adresses BAN {code_insee}",
             f"Parcelles MAJIC {code_insee}",
             f"Commune {code_insee}",
+            _COMMUNE_GROUP_SENTINEL,   # groupe "75056 - Nom" positionné ici
             "PLAN IGN J+1",
             "Waze",
             "OSM France",
@@ -1025,9 +1031,14 @@ class CheminsRuraux:
         for name in reversed(canonical_order):
             target = None
             for child in root.children():
-                if isinstance(child, QgsLayerTreeGroup) and child.name() == name:
-                    target = child
-                    break
+                if isinstance(child, QgsLayerTreeGroup):
+                    # Matcher le sentinel : groupe dont le nom commence par code_insee
+                    if name == _COMMUNE_GROUP_SENTINEL and child.name().startswith(code_insee):
+                        target = child
+                        break
+                    elif child.name() == name:
+                        target = child
+                        break
                 elif isinstance(child, QgsLayerTreeLayer):
                     layer = child.layer()
                     if layer and layer.name() == name:
