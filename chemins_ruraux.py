@@ -1309,22 +1309,14 @@ class CheminsRuraux:
             crs="EPSG:4326"
         )
         
-        # Afficher le message seulement si c'est le seul chargement
-        if not self.dlg.chkCadastre.isChecked() and not self.dlg.chkBAN.isChecked():
-            if success:
-                QMessageBox.information(
-                    self.iface.mainWindow(),
-                    "Emprise communale chargée",
-                    f"L'emprise de la commune {code_insee} a été chargée avec succès."
-                )
-            else:
-                QMessageBox.warning(
-                    self.iface.mainWindow(),
-                    "Emprise communale non disponible",
-                    f"Impossible de charger l'emprise pour le code INSEE {code_insee}.\n\n"
-                    "Consultez le journal des messages pour plus de détails."
-                )
-        
+        if not success:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Emprise communale non disponible",
+                f"Impossible de charger l'emprise pour le code INSEE {code_insee}.\n\n"
+                "Consultez le journal des messages pour plus de détails."
+            )
+
         return success, layer
     
     def apply_ban_style(self, layer,
