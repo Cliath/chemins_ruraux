@@ -759,27 +759,13 @@ class CheminsRuraux:
             layer.setRenderer(renderer)
             layer.triggerRepaint()
 
-        if not any([
-            self.dlg.chkCadastre.isChecked(),
-            self.dlg.chkCommune.isChecked(),
-            self.dlg.chkBAN.isChecked(),
-            self.dlg.chkVoirie.isChecked(),
-            self.dlg.chkVoirieDep.isChecked(),
-            self.dlg.chkOsmRoutes.isChecked(),
-        ]):
-            if success:
-                QMessageBox.information(
-                    self.iface.mainWindow(),
-                    "BD TOPO Routes numérotées ou nommées chargées",
-                    f"Les routes numérotées ou nommées BD TOPO de la commune {code_insee} ont été chargées avec succès."
-                )
-            else:
-                QMessageBox.warning(
-                    self.iface.mainWindow(),
-                    "BD TOPO Routes numérotées ou nommées non disponible",
-                    f"Impossible de charger les routes numérotées ou nommées BD TOPO pour le code INSEE {code_insee}.\n\n"
-                    "Consultez le journal des messages pour plus de détails."
-                )
+        if not success:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "BD TOPO Routes numérotées ou nommées non disponible",
+                f"Impossible de charger les routes numérotées ou nommées BD TOPO pour le code INSEE {code_insee}.\n\n"
+                "Consultez le journal des messages pour plus de détails."
+            )
 
         return success, layer
 
@@ -907,33 +893,22 @@ class CheminsRuraux:
                 )
         
         if loaded_count > 0:
-            # Si c'est le seul type de données chargé, afficher un message
-            if not self.dlg.chkCommune.isChecked() and not self.dlg.chkBAN.isChecked():
-                message = f"{loaded_count} couche(s) cadastrale(s) chargée(s) avec succès."
-                if errors:
-                    message += f"\n\nCouches en erreur : {', '.join(errors)}"
-                    message += "\n\nConsultez le journal des messages (Vue → Panneaux → Journal des messages) pour plus de détails."
-                QMessageBox.information(
+            if errors:
+                QMessageBox.warning(
                     self.iface.mainWindow(),
-                    "Cadastre chargé",
-                    message
+                    "Cadastre partiellement chargé",
+                    f"{loaded_count} couche(s) chargée(s), couches en erreur : {', '.join(errors)}\n\n"
+                    "Consultez le journal des messages pour plus de détails."
                 )
             return True, created_layers
         else:
-            # Si c'est le seul type de données chargé, afficher un message d'erreur
-            if not self.dlg.chkCommune.isChecked() and not self.dlg.chkBAN.isChecked():
-                error_details = "Aucune couche n'a pu être chargée.\n\n"
-                error_details += f"Code INSEE : {code_insee}\n"
-                error_details += f"URL : {wms_url}\n\n"
-                error_details += "Vérifiez :\n"
-                error_details += "1. Le code INSEE est correct\n"
-                error_details += "2. Votre connexion internet\n"
-                error_details += "3. Le journal des messages pour plus de détails"
-                QMessageBox.critical(
-                    self.iface.mainWindow(),
-                    "Erreur de chargement",
-                    error_details
-                )
+            QMessageBox.critical(
+                self.iface.mainWindow(),
+                "Erreur de chargement du cadastre",
+                f"Aucune couche cadastrale n'a pu être chargée.\n\n"
+                f"Code INSEE : {code_insee}\nURL : {wms_url}\n\n"
+                "Vérifiez le code INSEE, la connexion internet et le journal des messages."
+            )
             return False, []
 
     def load_scan_historique_wms(self, layer_name_wms, display_name):
@@ -1453,22 +1428,14 @@ class CheminsRuraux:
             )
         )
         
-        # Afficher le message seulement si c'est le seul chargement
-        if not self.dlg.chkCadastre.isChecked() and not self.dlg.chkCommune.isChecked():
-            if success:
-                QMessageBox.information(
-                    self.iface.mainWindow(),
-                    "Adresses BAN chargées",
-                    f"{layer.featureCount()} adresse(s) de la commune {code_insee} ont été chargées avec succès."
-                )
-            else:
-                QMessageBox.warning(
-                    self.iface.mainWindow(),
-                    "Adresses BAN non disponibles",
-                    f"Impossible de charger les adresses pour le code INSEE {code_insee}.\n\n"
-                    "Consultez le journal des messages pour plus de détails."
-                )
-        
+        if not success:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Adresses BAN non disponibles",
+                f"Impossible de charger les adresses pour le code INSEE {code_insee}.\n\n"
+                "Consultez le journal des messages pour plus de détails."
+            )
+
         return success, layer
     
     def load_voirie_wfs(self, code_insee, bbox=None):
