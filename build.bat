@@ -84,21 +84,17 @@ echo Push et tag v!VERSION! envoyes vers GitHub
 echo.
 
 REM Etape 5 : GitHub Release avec le ZIP
-echo [5/6] Creation de la GitHub Release v!VERSION!...
-set GH_EXE=
+echo [5/6] Creation de la GitHub Release v%VERSION%...
 where gh >nul 2>&1
-if !ERRORLEVEL! EQU 0 (
-    set GH_EXE=gh
-)
-if not defined GH_EXE (
+if %ERRORLEVEL% NEQ 0 (
     echo AVERTISSEMENT : GitHub CLI (gh) non trouve, GitHub Release ignoree
     goto :deploy
 )
-!GH_EXE! release create v!VERSION! "releases\chemins_ruraux-!VERSION!.zip" --title "Voirie Communale v!VERSION!" --generate-notes
-if !ERRORLEVEL! NEQ 0 (
+gh release create v%VERSION% "releases\chemins_ruraux-%VERSION%.zip" --title "Voirie Communale v%VERSION%" --generate-notes
+if %ERRORLEVEL% NEQ 0 (
     echo Erreur lors de la creation de la GitHub Release
 ) else (
-    echo GitHub Release v!VERSION! creee avec le ZIP
+    echo GitHub Release v%VERSION% creee avec le ZIP
 )
 echo.
 
