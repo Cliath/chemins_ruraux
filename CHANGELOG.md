@@ -1,3 +1,7 @@
+# [0.13.8] - 2026-03-07
+### Modifié
+- **`build.bat`** : létape 5 (GitHub Release) délègue l’appel `gh release create` à PowerShell pour éviter les conflits de syntaxe CMD (`setlocal enabledelayedexpansion` + `%ERRORLEVEL%`). Workflow désormais stable et validé.
+
 # [0.13.7] - 2026-03-07
 ### Modifié
 - **`build.bat`** : correction finale du workflow GitHub Release — utilisation de `%VERSION%` au lieu de `!VERSION!` dans l'étape `gh release create` pour éviter les conflits avec `setlocal enabledelayedexpansion`.

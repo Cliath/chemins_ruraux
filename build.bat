@@ -85,17 +85,7 @@ echo.
 
 REM Etape 5 : GitHub Release avec le ZIP
 echo [5/6] Creation de la GitHub Release v%VERSION%...
-where gh >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo AVERTISSEMENT : GitHub CLI (gh) non trouve, GitHub Release ignoree
-    goto :deploy
-)
-gh release create v%VERSION% "releases\chemins_ruraux-%VERSION%.zip" --title "Voirie Communale v%VERSION%" --generate-notes
-if %ERRORLEVEL% NEQ 0 (
-    echo Erreur lors de la creation de la GitHub Release
-) else (
-    echo GitHub Release v%VERSION% creee avec le ZIP
-)
+powershell -NoProfile -Command "$v='%VERSION%'; $zip='releases\chemins_ruraux-' + $v + '.zip'; $title='Voirie Communale v' + $v; gh release create ('v'+$v) $zip --title $title --generate-notes; if ($LASTEXITCODE -eq 0) { Write-Host ('GitHub Release v'+$v+' creee avec le ZIP') } else { Write-Host 'Erreur lors de la creation de la GitHub Release' }"
 echo.
 
 :deploy
