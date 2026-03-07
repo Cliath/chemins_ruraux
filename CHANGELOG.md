@@ -1,3 +1,7 @@
+# [0.12.8] - 2026-03-07
+### Corrigé
+- **Étiquettes BAN** : `QgsRuleBasedLabeling` avec filtres `regexp_match` remplacé par `QgsVectorLayerSimpleLabeling` (même approche que BD TOPO tronçons). Le renderer catégorise déjà les entités — les étiquettes n'ont pas à refiltrer par regex.
+
 # [0.12.7] - 2026-03-07
 ### Corrigé
 - **Message de fin de chargement absent** : le message récapitulatif n'était affiché que si plusieurs sources étaient chargées (`len(results) > 1`). Il est désormais affiché pour n'importe quel chargement, y compris BAN seule.
