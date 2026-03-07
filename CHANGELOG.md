@@ -1,3 +1,8 @@
+# [0.12.12] - 2026-03-07
+### Modifié
+- **Versionnage de `settings.json`** : le fichier n'est plus inclus dans le ZIP ni versionné dans git. Il est généré au premier usage depuis `_DEFAULTS` (comportement inchangé). Avantage : les paramètres utilisateur ne sont plus écrasés lors d'une mise à jour, et aucune donnée personnelle (`last_insee`, `checked_layers`) n'est commitée dans le dépôt.
+- **`.gitignore`** : `settings.json` ajouté pour éviter tout commit accidentel de données personnelles.
+
 # [0.12.11] - 2026-03-07
 ### Modifié
 - **Stockage des paramètres** : `settings.json` déplacé du profil QGIS vers le dossier du plugin, pour être partagé (versionné git). Le fichier est intégré au package ZIP et déployé avec le plugin. Au premier accès, toutes les clés manquantes sont complétées avec leurs valeurs par défaut (y compris `ban_regex_chemin` et `ban_regex_voie` même sans jamais ouvrir le dialogue Paramètres). Le dictionnaire `_DEFAULTS` centralise toutes les valeurs par défaut.

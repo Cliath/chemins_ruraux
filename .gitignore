@@ -85,6 +85,10 @@ desktop.ini
 *.qgs~
 *.qgz~
 
+# Paramètres utilisateur du plugin (données personnelles + état de session)
+# Généré automatiquement à partir de _DEFAULTS — ne pas versionner
+settings.json
+
 # Python virtual environment
 .venv/
 venv/
