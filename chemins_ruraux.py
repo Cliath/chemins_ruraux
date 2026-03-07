@@ -12,7 +12,7 @@ from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QApplication
 from qgis.core import (QgsProject, QgsVectorLayer, QgsRasterLayer, QgsMessageLog,
                        Qgis, QgsApplication, QgsLayerTreeGroup, QgsLayerTreeLayer,
-                       QgsCoordinateTransform, QgsCoordinateReferenceSystem, QgsWkbTypes, QgsSettings,
+                       QgsCoordinateTransform, QgsCoordinateReferenceSystem, QgsWkbTypes,
                        QgsRendererCategory, QgsCategorizedSymbolRenderer, QgsSingleSymbolRenderer,
                        QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, QgsFeature, QgsField,
                        QgsGeometry, QgsPointXY,
@@ -1638,10 +1638,10 @@ class CheminsRuraux:
 
     @staticmethod
     def _get_regex_setting(key, default):
-        """Lit une regex depuis QgsSettings, valide, et restaure le défaut si corrompue.
+        """Lit une regex depuis settings.json, valide, et restaure le défaut si corrompue.
 
         Args:
-            key:     Clé QgsSettings (sans préfixe).
+            key:     Clé (sans préfixe).
             default: Valeur par défaut (raw string recommandé).
 
         Returns:
@@ -1657,7 +1657,7 @@ class CheminsRuraux:
                 f"Regex corrompue pour '{key}' ({val!r}), restauration du défaut.",
                 "CheminsRuraux", Qgis.Warning
             )
-            SettingsDialog.set(key, default)   # Réparer QgsSettings
+            SettingsDialog.set(key, default)   # Réparer settings.json
             return default
 
     @staticmethod

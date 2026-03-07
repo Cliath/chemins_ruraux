@@ -1,3 +1,7 @@
+# [0.12.10] - 2026-03-07
+### Modifié
+- **Stockage des paramètres** : `QgsSettings` (registre Windows) remplacé par un fichier `settings.json` dans le profil QGIS (`<profil>/chemins_ruraux/settings.json`). Le fichier est UTF-8, indenté, lisible et éditable manuellement. Même emplacement que `TODO.md`. L'API interne `SettingsDialog.get()`/`set()` est inchangée.
+
 # [0.12.9] - 2026-03-07
 ### Modifié
 - **Étiquettes BAN** : expression `"numero" || ' ' || "nom_voie"` au lieu du seul champ `nom_voie`.

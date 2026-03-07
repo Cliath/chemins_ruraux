@@ -17,7 +17,7 @@ from qgis.PyQt.QtWidgets import (
 )
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QFont
-from qgis.core import QgsSettings
+from qgis.core import QgsApplication
 
 # Importer la classe du fichier UI compilé
 from .chemins_ruraux_dialog_base import Ui_CheminsRurauxDialogBase
@@ -187,26 +187,52 @@ class SettingsDialog(QDialog):
     _LAYER_ORDER_JSON = os.path.join(os.path.dirname(__file__), 'layer_order.json')
 
     @staticmethod
-    def get(key, default, value_type=None):
-        """Lit un paramètre depuis QgsSettings.
+    def _settings_path():
+        """Chemin du fichier settings.json dans le profil QGIS."""
+        plugin_dir = os.path.join(QgsApplication.qgisSettingsDirPath(), "chemins_ruraux")
+        os.makedirs(plugin_dir, exist_ok=True)
+        return os.path.join(plugin_dir, "settings.json")
 
-        Si value_type n'est pas fourni, le type est déduit automatiquement
-        depuis la valeur par défaut. Cela garantit que QSettings retourne
-        les chaînes telles qu'elles ont été stockées (sans interpréter
-        les séquences d'échappement comme \\b ou \\n).
+    @staticmethod
+    def _load():
+        """Charge le fichier settings.json ; retourne {} si absent ou corrompu."""
+        path = SettingsDialog._settings_path()
+        if os.path.isfile(path):
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, OSError):
+                return {}
+        return {}
+
+    @staticmethod
+    def _save(data):
+        """Écrit le dictionnaire dans settings.json (UTF-8, indenté)."""
+        path = SettingsDialog._settings_path()
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+    @staticmethod
+    def get(key, default, value_type=None):
+        """Lit un paramètre depuis settings.json.
+
+        Le type JSON est préservé nativement (bool, int, str, list).
+        value_type permet une coercition explicite si nécessaire.
         """
-        s = QgsSettings()
-        full_key = f"chemins_ruraux/{key}"
-        if value_type is None and default is not None:
-            value_type = type(default)
-        if value_type is not None:
-            return s.value(full_key, default, type=value_type)
-        return s.value(full_key, default)
+        val = SettingsDialog._load().get(key, default)
+        if value_type is not None and not isinstance(val, value_type):
+            try:
+                val = value_type(val)
+            except (ValueError, TypeError):
+                val = default
+        return val
 
     @staticmethod
     def set(key, value):
-        """Enregistre un paramètre dans QgsSettings."""
-        QgsSettings().setValue(f"chemins_ruraux/{key}", value)
+        """Enregistre un paramètre dans settings.json."""
+        data = SettingsDialog._load()
+        data[key] = value
+        SettingsDialog._save(data)
 
     # ------------------------------------------------------------------
     # Lecture / écriture de layer_order.json
@@ -318,7 +344,7 @@ class SettingsDialog(QDialog):
         _BAN_REGEX_VOIE_DEFAULT   = r'(?i)(voi(?:e)?) (com(?:munale)?)|\bV\.?C\.?\b'
 
         # Charger les valeurs stockées ; si corrompues (regex invalide), restaurer le défaut
-        # et corriger QgsSettings pour éviter l'erreur lors du prochain chargement BAN.
+        # et corriger settings.json pour éviter l'erreur lors du prochain chargement BAN.
         _stored_cr = self.get('ban_regex_chemin', _BAN_REGEX_CHEMIN_DEFAULT) or _BAN_REGEX_CHEMIN_DEFAULT
         try:
             re.compile(_stored_cr)
