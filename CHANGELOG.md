@@ -1,7 +1,12 @@
-# [0.12.3] - 2026-03-07
+# [0.12.5] - 2026-03-07
+### Corrigé
+- **Regex corrompues depuis QgsSettings** : `SettingsDialog.get()` sans `value_type` laissait Qt inférer le type, ce qui corrompait les backslashes (`\b`, `\.`) lors de la lecture sur Windows. Corrigé : le type est désormais automatiquement déduit depuis la valeur par défaut (ex. `str` si le défaut est une chaîne).
+
+# [0.12.4] - 2026-03-07
 ### Corrigé
 - **Paramètres** : validation des expressions régulières (regex chemin/voie) avant sauvegarde. Un message d'erreur explicite est affiché si la regex est invalide, avec focus automatique sur le champ fautif.
-# [0.12.1] - 2026-03-07
+
+# [0.12.2] - 2026-03-07
 ### Corrigé
 - **Clip par emprise communale** : la couche mémoire était invalide car `geometryDisplayString()` retourne `"Line"` au lieu de `"LineString"` attendu par le provider mémoire. Corrigé avec `QgsWkbTypes.displayString(layer.wkbType())`. Ajout d'une garde `isValid()` avant remplacement dans le projet.
 

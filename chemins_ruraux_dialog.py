@@ -188,9 +188,17 @@ class SettingsDialog(QDialog):
 
     @staticmethod
     def get(key, default, value_type=None):
-        """Lit un paramètre depuis QgsSettings."""
+        """Lit un paramètre depuis QgsSettings.
+
+        Si value_type n'est pas fourni, le type est déduit automatiquement
+        depuis la valeur par défaut. Cela garantit que QSettings retourne
+        les chaînes telles qu'elles ont été stockées (sans interpréter
+        les séquences d'échappement comme \\b ou \\n).
+        """
         s = QgsSettings()
         full_key = f"chemins_ruraux/{key}"
+        if value_type is None and default is not None:
+            value_type = type(default)
         if value_type is not None:
             return s.value(full_key, default, type=value_type)
         return s.value(full_key, default)
