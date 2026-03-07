@@ -1,3 +1,7 @@
+# [0.12.9] - 2026-03-07
+### Modifié
+- **Étiquettes BAN** : expression `"numero" || ' ' || "nom_voie"` au lieu du seul champ `nom_voie`.
+
 # [0.12.8] - 2026-03-07
 ### Corrigé
 - **Étiquettes BAN** : `QgsRuleBasedLabeling` avec filtres `regexp_match` remplacé par `QgsVectorLayerSimpleLabeling` (même approche que BD TOPO tronçons). Le renderer catégorise déjà les entités — les étiquettes n'ont pas à refiltrer par regex.

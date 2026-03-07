@@ -1873,8 +1873,8 @@ class CheminsRuraux:
         # Le renderer gère déjà la catégorisation. Le labeling affiche simplement
         # nom_voie ; QGIS n'affiche rien si le champ est null/vide.
         lbl = QgsPalLayerSettings()
-        lbl.isExpression = False
-        lbl.fieldName = field_name
+        lbl.isExpression = True
+        lbl.fieldName = '"numero" || \' \' || "nom_voie"'
         lbl.enabled = True
         lbl.placement = QgsPalLayerSettings.AroundPoint
         fmt = QgsTextFormat()
