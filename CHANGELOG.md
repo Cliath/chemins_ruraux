@@ -1,3 +1,7 @@
+# [0.13.7] - 2026-03-07
+### Modifié
+- **`build.bat`** : correction finale du workflow GitHub Release — utilisation de `%VERSION%` au lieu de `!VERSION!` dans l'étape `gh release create` pour éviter les conflits avec `setlocal enabledelayedexpansion`.
+
 # [0.13.6] - 2026-03-07
 ### Modifié
 - **`build.bat`** : le workflow crée désormais un tag git `vX.Y.Z` après chaque commit et une GitHub Release avec le ZIP attaché (`gh release create --generate-notes`). Requiert GitHub CLI (`gh`) installé et authentifié (`gh auth login`).
