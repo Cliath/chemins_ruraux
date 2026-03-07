@@ -1,54 +1,22 @@
-﻿# Releases - Voirie Communale
+# releases/
 
-## Comment installer une version
+Ce dossier contient les fichiers ZIP générés localement par `build.bat`.
 
-1. Téléchargez le fichier `.zip` de la version souhaitée
-2. Ouvrez QGIS
-3. Menu **Extensions** → **Installer/Gérer les extensions**
-4. Onglet **Installer depuis un ZIP**
-5. Sélectionnez le fichier téléchargé
-6. Cliquez sur **Installer l'extension**
+> **Les ZIPs sont ignorés par git** (voir `.gitignore`).  
+> Pour télécharger une version, rendez-vous sur les **[GitHub Releases](https://github.com/Cliath/chemins_ruraux/releases)**.
 
-## Versions disponibles
+## Installer une version
 
-### [v0.1.0](chemins_ruraux-0.1.0.zip) - 2026-01-25
+1. Téléchargez le ZIP depuis [GitHub Releases](https://github.com/Cliath/chemins_ruraux/releases)
+2. QGIS → **Extensions** → **Installer/Gérer les extensions** → onglet **Installer depuis un ZIP**
+3. Sélectionnez le fichier téléchargé et cliquez sur **Installer l’extension**
 
-**Première version fonctionnelle**
+## Générer un ZIP localement
 
-- ✅ Intégration du flux WMS cadastre INSPIRE (DGFiP)
-- ✅ Champ de saisie pour le code INSEE
-- ✅ Sélection des couches cadastrales (parcelles, bâtiments, sections)
-- ✅ Validation du code INSEE
-- ✅ Documentation complète
+`powershell
+.\build.bat patch   # 0.X.Y → 0.X.Y+1
+.\build.bat minor   # 0.X.Y → 0.X+1.0
+.\build.bat major   # 0.X.Y → X+1.0.0
+`
 
-**Fichier** : `chemins_ruraux-0.1.0.zip` (12.58 KB)
-
----
-
-## Notes de version
-
-Pour plus de détails sur les modifications, consultez le [CHANGELOG.md](../CHANGELOG.md).
-
-## Build d'une nouvelle version
-
-Pour créer un package d'une nouvelle version :
-
-```bash
-# Windows
-build.bat
-
-# Linux/macOS
-chmod +x build.sh
-./build.sh
-```
-
-Ou manuellement :
-```bash
-# 1. Compiler
-python compile_plugin.py
-
-# 2. Packager
-python package.py
-```
-
-Le fichier ZIP sera créé dans le dossier `releases/`.
+`build.bat` compile, package, commit, crée le tag git, publie la GitHub Release et déploie dans QGIS.
