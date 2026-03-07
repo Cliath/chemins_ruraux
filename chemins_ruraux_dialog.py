@@ -6,10 +6,12 @@ Licence : GNU GPL v2+
 """
 
 import os
+import json
 from qgis.PyQt import QtWidgets
 from qgis.PyQt.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QTextEdit,
-    QPushButton, QLabel, QSizePolicy, QMessageBox, QCheckBox, QFrame, QToolButton, QLineEdit
+    QPushButton, QLabel, QSizePolicy, QMessageBox, QCheckBox, QFrame,
+    QToolButton, QLineEdit, QTabWidget, QListWidget, QListWidgetItem, QAbstractItemView
 )
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QFont
@@ -180,6 +182,7 @@ class SettingsDialog(QDialog):
     """Dialogue de paramètres du plugin."""
 
     _NS = "chemins_ruraux"
+    _LAYER_ORDER_JSON = os.path.join(os.path.dirname(__file__), 'layer_order.json')
 
     @staticmethod
     def get(key, default, value_type=None):
@@ -195,34 +198,70 @@ class SettingsDialog(QDialog):
         """Enregistre un paramètre dans QgsSettings."""
         QgsSettings().setValue(f"chemins_ruraux/{key}", value)
 
+    # ------------------------------------------------------------------
+    # Lecture / écriture de layer_order.json
+    # ------------------------------------------------------------------
+    @classmethod
+    def _read_layer_order(cls):
+        """Lit layer_order.json et retourne (commune_group, root)."""
+        try:
+            with open(cls._LAYER_ORDER_JSON, encoding='utf-8') as f:
+                data = json.load(f)
+            return data.get('commune_group', []), data.get('root', [])
+        except Exception:
+            return [], []
+
+    @classmethod
+    def _write_layer_order(cls, commune_group, root):
+        """Sauvegarde commune_group et root dans layer_order.json."""
+        try:
+            with open(cls._LAYER_ORDER_JSON, encoding='utf-8') as f:
+                data = json.load(f)
+        except Exception:
+            data = {}
+        data['commune_group'] = commune_group
+        data['root'] = root
+        with open(cls._LAYER_ORDER_JSON, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Paramètres - Voirie Communale")
-        self.setMinimumWidth(400)
+        self.setMinimumWidth(480)
+        self.setMinimumHeight(500)
 
-        layout = QVBoxLayout(self)
-        layout.setSpacing(8)
+        outer = QVBoxLayout(self)
+        outer.setSpacing(8)
+
+        tabs = QTabWidget()
+        outer.addWidget(tabs)
+
+        # ============================================================
+        # Onglet 1 : Général
+        # ============================================================
+        tab_general = QDialog()
+        tab_general.setFlat = lambda *a: None  # QDialog n'a pas setFlat, compat shim
+        lay_general = QVBoxLayout(tab_general)
+        lay_general.setSpacing(8)
 
         # --- Comportement ---
-        lbl_comportement = QLabel("<b>Comportement après chargement</b>")
-        layout.addWidget(lbl_comportement)
+        lay_general.addWidget(QLabel("<b>Comportement après chargement</b>"))
 
         self.chk_auto_zoom = QCheckBox("Zoom automatique sur la commune")
         self.chk_auto_zoom.setChecked(self.get('auto_zoom', True, bool))
-        layout.addWidget(self.chk_auto_zoom)
+        lay_general.addWidget(self.chk_auto_zoom)
 
         self.chk_auto_reorder = QCheckBox("Réordonnancement automatique des couches")
         self.chk_auto_reorder.setChecked(self.get('auto_reorder', True, bool))
-        layout.addWidget(self.chk_auto_reorder)
+        lay_general.addWidget(self.chk_auto_reorder)
 
-        layout.addSpacing(4)
+        lay_general.addSpacing(4)
         sep = QFrame(); sep.setFrameShape(QFrame.HLine); sep.setFrameShadow(QFrame.Sunken)
-        layout.addWidget(sep)
-        layout.addSpacing(4)
+        lay_general.addWidget(sep)
+        lay_general.addSpacing(4)
 
         # --- Mémorisation automatique ---
-        lbl_memo = QLabel("<b>Mémorisation automatique</b>")
-        layout.addWidget(lbl_memo)
+        lay_general.addWidget(QLabel("<b>Mémorisation automatique</b>"))
 
         last_insee = self.get('last_insee', '') or ''
         row = QHBoxLayout()
@@ -230,23 +269,22 @@ class SettingsDialog(QDialog):
         self.lbl_insee = QLabel(f"<b>{last_insee}</b>" if last_insee else "<i>(aucun)</i>")
         row.addWidget(self.lbl_insee)
         row.addStretch()
-        layout.addLayout(row)
+        lay_general.addLayout(row)
 
         note = QLabel(
             "<small><i>Le code INSEE et la sélection des couches sont mémorisés "
             "automatiquement à chaque chargement.</i></small>"
         )
         note.setWordWrap(True)
-        layout.addWidget(note)
+        lay_general.addWidget(note)
 
-        layout.addSpacing(4)
+        lay_general.addSpacing(4)
         sep2 = QFrame(); sep2.setFrameShape(QFrame.HLine); sep2.setFrameShadow(QFrame.Sunken)
-        layout.addWidget(sep2)
-        layout.addSpacing(4)
+        lay_general.addWidget(sep2)
+        lay_general.addSpacing(4)
 
         # --- Catégorisation des adresses BAN ---
-        lbl_ban = QLabel("<b>Catégorisation des adresses BAN</b>")
-        layout.addWidget(lbl_ban)
+        lay_general.addWidget(QLabel("<b>Catégorisation des adresses BAN</b>"))
 
         _BAN_REGEX_CHEMIN_DEFAULT = r'(?i)(che(?:min)?|sen(?:tier)?) rural|\bC\.?R\.?\b'
         _BAN_REGEX_VOIE_DEFAULT   = r'(?i)(voi(?:e)?) (com(?:munale)?)|\bV\.?C\.?\b'
@@ -257,7 +295,7 @@ class SettingsDialog(QDialog):
         self.txt_regex_chemin.setPlaceholderText(_BAN_REGEX_CHEMIN_DEFAULT)
         self.txt_regex_chemin.setMinimumWidth(260)
         row_cr.addWidget(self.txt_regex_chemin)
-        layout.addLayout(row_cr)
+        lay_general.addLayout(row_cr)
 
         row_vc = QHBoxLayout()
         row_vc.addWidget(QLabel("Regex Voie communale :"))
@@ -265,18 +303,78 @@ class SettingsDialog(QDialog):
         self.txt_regex_voie.setPlaceholderText(_BAN_REGEX_VOIE_DEFAULT)
         self.txt_regex_voie.setMinimumWidth(260)
         row_vc.addWidget(self.txt_regex_voie)
-        layout.addLayout(row_vc)
+        lay_general.addLayout(row_vc)
 
         note_ban = QLabel(
             "<small><i>Expressions régulières utilisées pour identifier les chemins ruraux "
             "et voies communales dans le champ <tt>nom_voie</tt> de la couche BAN.</i></small>"
         )
         note_ban.setWordWrap(True)
-        layout.addWidget(note_ban)
+        lay_general.addWidget(note_ban)
+        lay_general.addStretch()
 
-        layout.addSpacing(12)
+        tabs.addTab(tab_general, "Général")
 
-        # --- Boutons ---
+        # ============================================================
+        # Onglet 2 : Ordre des couches
+        # ============================================================
+        tab_order = QDialog()
+        lay_order = QVBoxLayout(tab_order)
+        lay_order.setSpacing(6)
+
+        commune_group, root = self._read_layer_order()
+
+        # ---- Liste groupe commune ----
+        lay_order.addWidget(QLabel(
+            "<b>Couches dans le groupe commune</b> "
+            "<small>(glisser-déposer pour réordonner)</small>"
+        ))
+        note_cg = QLabel(
+            "<small><i>Utiliser <tt>{code_insee}</tt> comme marqueur. "
+            "La couche en tête de liste sera affichée en haut dans QGIS.</i></small>"
+        )
+        note_cg.setWordWrap(True)
+        lay_order.addWidget(note_cg)
+
+        self.lst_commune = QListWidget()
+        self.lst_commune.setDragDropMode(QAbstractItemView.InternalMove)
+        self.lst_commune.setDefaultDropAction(Qt.MoveAction)
+        self.lst_commune.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.lst_commune.setAlternatingRowColors(True)
+        self.lst_commune.setMinimumHeight(160)
+        for entry in commune_group:
+            self.lst_commune.addItem(QListWidgetItem(entry))
+        lay_order.addWidget(self.lst_commune)
+
+        lay_order.addSpacing(8)
+
+        # ---- Liste racine ----
+        lay_order.addWidget(QLabel(
+            "<b>Fonds de plan (racine de l’arbre)</b> "
+            "<small>(glisser-déposer pour réordonner)</small>"
+        ))
+        note_root = QLabel(
+            "<small><i><tt>__COMMUNE_GROUP__</tt> représente la position du groupe commune. "
+            "Les noms inconnus sont ignorés.</i></small>"
+        )
+        note_root.setWordWrap(True)
+        lay_order.addWidget(note_root)
+
+        self.lst_root = QListWidget()
+        self.lst_root.setDragDropMode(QAbstractItemView.InternalMove)
+        self.lst_root.setDefaultDropAction(Qt.MoveAction)
+        self.lst_root.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.lst_root.setAlternatingRowColors(True)
+        self.lst_root.setMinimumHeight(180)
+        for entry in root:
+            self.lst_root.addItem(QListWidgetItem(entry))
+        lay_order.addWidget(self.lst_root)
+
+        tabs.addTab(tab_order, "Ordre des couches")
+
+        # ============================================================
+        # Boutons
+        # ============================================================
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
         self.btn_ok = QPushButton("OK")
@@ -284,7 +382,7 @@ class SettingsDialog(QDialog):
         self.btn_cancel = QPushButton("Annuler")
         btn_layout.addWidget(self.btn_ok)
         btn_layout.addWidget(self.btn_cancel)
-        layout.addLayout(btn_layout)
+        outer.addLayout(btn_layout)
 
         self.btn_ok.clicked.connect(self._save_and_accept)
         self.btn_cancel.clicked.connect(self.reject)
@@ -294,6 +392,25 @@ class SettingsDialog(QDialog):
         self.set('auto_reorder', self.chk_auto_reorder.isChecked())
         self.set('ban_regex_chemin', self.txt_regex_chemin.text().strip())
         self.set('ban_regex_voie', self.txt_regex_voie.text().strip())
+
+        # Sauvegarder l'ordre des couches dans layer_order.json
+        commune_group = [
+            self.lst_commune.item(i).text()
+            for i in range(self.lst_commune.count())
+        ]
+        root = [
+            self.lst_root.item(i).text()
+            for i in range(self.lst_root.count())
+        ]
+        try:
+            self._write_layer_order(commune_group, root)
+        except Exception as exc:
+            QMessageBox.warning(
+                self,
+                "Erreur d’enregistrement",
+                f"Impossible de sauvegarder layer_order.json :\n{exc}"
+            )
+            return
         self.accept()
 
 
