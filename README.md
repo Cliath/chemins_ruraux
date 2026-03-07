@@ -1,7 +1,7 @@
 # Voirie Communale - Plugin QGIS
 
 Plugin QGIS pour le recensement de la voirie communale (voies communales et chemins ruraux).  
-Version actuelle : **0.11.8**
+Version actuelle : **0.11.9**
 
 ## Installation
 
@@ -35,20 +35,28 @@ Ou via `build.bat` qui compile, package, push git et déploie en une commande :
 
 - **Barre de lancement** : le bouton du plugin ouvre 5 actions : *Charger des données*, *Numériser des données* (à venir), *Liste des tâches*, *Paramètres*, *À propos*
 - **Mémorisation** : dernier code INSEE et sélection des couches restaurés automatiquement à l'ouverture
-- **Paramètres** : zoom automatique et réordonnancement automatique des couches configurables
-- **Ordre canonique** des couches dans le panneau (haut → bas) : BD TOPO → Voirie comm. → Voirie dép. → OSM Routes → BAN → MAJIC → Commune → PLAN IGN → Waze → OSM France → Cadastre → BD ORTHO® → Photos aériennes → SCAN 50® → Cassini → État-Major
+- **Paramètres** : zoom automatique, réordonnancement automatique, regex de filtrage des voies, et ordre des couches configurable par glisser-déposer
+- **Ordre canonique** configurable via `layer_order.json` (haut → bas) : BD TOPO Tronçons → BD TOPO Routes → Voirie comm. → Voirie dép. → OSM Routes → BAN → MAJIC → Commune → Cadastre → PLAN IGN → Waze → OSM France → CoSIA → BD ORTHO® → Photos aériennes → SCAN 50® → Cassini → État-Major
 
 ### Données vectorielles (filtrées par code INSEE ou BBOX communale)
 
 | Couche | Source | Filtre |
 |--------|--------|--------|
 | **Emprise communale** | IGN Géoplateforme WFS — Admin Express | code INSEE |
-| **Adresses BAN** | IGN Géoplateforme WFS | code INSEE |
+| **Adresses BAN** (paginée, toutes adresses) | IGN Géoplateforme WFS | code INSEE |
 | **Voirie communale DGCL 2025** | IGN Géoplateforme WFS | BBOX commune |
 | **Voirie départementale DGCL 2025** | IGN Géoplateforme WFS | BBOX commune |
 | **Routes OSM** (CE / C / R) | Overpass API | BBOX commune |
 | **BD TOPO routes nommées** | IGN Géoplateforme WFS | BBOX commune |
+| **BD TOPO tronçons de route** (paginé) | IGN Géoplateforme WFS | BBOX commune |
 | **Parcelles MAJIC** (personnes morales) | API Koumoul (DGFiP) + IGN WFS | code INSEE |
+
+#### BD TOPO tronçons de route — style par règles
+
+Le style utilise un `QgsRuleBasedRenderer` sur le champ `nom_collaboratif_gauche` :
+
+- Les regex de filtrage (chemin rural / voie communale, paramétrables dans les Paramètres) sont appliquées en priorité
+- Puis catégorisation par `nature` (autoroute, route à 1/2 chaussées, chemin, sentier…)
 
 #### Routes OSM — catégorisation par `ref`
 
@@ -64,6 +72,7 @@ Ou via `build.bat` qui compile, package, push git et déploie en une commande :
 | **Plan IGN J+1** | IGN Géoplateforme WMS |
 | **Waze** | Tuiles XYZ Waze |
 | **OSM France** | Tuiles XYZ openstreetmap.fr |
+| **CoSIA** (3 millésimes : 2017–2020, 2021–2023, 2024–2026) | IGN Géoplateforme WMS |
 | **BD ORTHO® 20 cm** | IGN Géoplateforme WMS |
 | **Photos aériennes historiques** (8 périodes 1950–2023) | IGN Géoplateforme WMS |
 | **SCAN 50® 1950** | IGN Géoplateforme WMS |
@@ -79,7 +88,7 @@ Ou via `build.bat` qui compile, package, push git et déploie en une commande :
 4. Cochez les couches souhaitées
 5. Cliquez sur **Charger les données**
 
-Les couches nécessitant un filtre géographique (Voirie DGCL, OSM Routes, BD TOPO) chargent automatiquement l'emprise communale en premier pour délimiter la zone de requête.
+Les couches nécessitant un filtre géographique (Voirie DGCL, OSM Routes, BD TOPO) chargent automatiquement l'emprise communale en premier pour délimiter la zone de requête. La BAN et les tronçons BD TOPO utilisent une pagination automatique (1 000 entités par page) pour contourner la limite serveur de la Géoplateforme IGN.
 
 ## Structure du projet
 
@@ -87,11 +96,12 @@ Les couches nécessitant un filtre géographique (Voirie DGCL, OSM Routes, BD TO
 chemins_ruraux/
 ├── __init__.py                      # Point d'entrée du plugin
 ├── chemins_ruraux.py                # Classe principale (logique métier)
-├── chemins_ruraux_dialog.py         # Dialogues (LauncherDialog, CheminsRurauxDialog, etc.)
+├── chemins_ruraux_dialog.py         # Dialogues (LauncherDialog, CheminsRurauxDialog, SettingsDialog…)
 ├── chemins_ruraux_dialog_base.ui    # Interface Qt Designer
 ├── chemins_ruraux_dialog_base.py    # [généré] Compilé depuis le .ui
 ├── resources.qrc                    # Ressources Qt (icônes)
 ├── resources.py                     # [généré] Compilé depuis resources.qrc
+├── layer_order.json                 # Ordre canonique des couches (modifiable sans recompiler)
 ├── version.py                       # Version courante
 ├── metadata.txt                     # Métadonnées QGIS
 ├── CHANGELOG.md                     # Historique détaillé
