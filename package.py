@@ -29,6 +29,7 @@ FILES_TO_INCLUDE = [
     'README.md',
     'CHANGELOG.md',
     'layer_order.json',
+    'settings.json',
 ]
 
 # Dossiers à inclure (récursif)

@@ -1,3 +1,7 @@
+# [0.12.11] - 2026-03-07
+### Modifié
+- **Stockage des paramètres** : `settings.json` déplacé du profil QGIS vers le dossier du plugin, pour être partagé (versionné git). Le fichier est intégré au package ZIP et déployé avec le plugin. Au premier accès, toutes les clés manquantes sont complétées avec leurs valeurs par défaut (y compris `ban_regex_chemin` et `ban_regex_voie` même sans jamais ouvrir le dialogue Paramètres). Le dictionnaire `_DEFAULTS` centralise toutes les valeurs par défaut.
+
 # [0.12.10] - 2026-03-07
 ### Modifié
 - **Stockage des paramètres** : `QgsSettings` (registre Windows) remplacé par un fichier `settings.json` dans le profil QGIS (`<profil>/chemins_ruraux/settings.json`). Le fichier est UTF-8, indenté, lisible et éditable manuellement. Même emplacement que `TODO.md`. L'API interne `SettingsDialog.get()`/`set()` est inchangée.

@@ -8,7 +8,6 @@ Licence : GNU GPL v2+
 import os
 import re
 import json
-from qgis.PyQt import QtWidgets
 from qgis.PyQt.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QTextEdit,
     QPushButton, QLabel, QSizePolicy, QMessageBox, QCheckBox, QFrame,
@@ -17,7 +16,7 @@ from qgis.PyQt.QtWidgets import (
 )
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QFont
-from qgis.core import QgsApplication
+from qgis.PyQt import QtWidgets
 
 # Importer la classe du fichier UI compilé
 from .chemins_ruraux_dialog_base import Ui_CheminsRurauxDialogBase
@@ -186,24 +185,42 @@ class SettingsDialog(QDialog):
     _NS = "chemins_ruraux"
     _LAYER_ORDER_JSON = os.path.join(os.path.dirname(__file__), 'layer_order.json')
 
+    # Valeurs par défaut de tous les paramètres.
+    # Ce dictionnaire est la source de vérité : toute nouvelle clé doit y figurer.
+    _DEFAULTS = {
+        "auto_zoom":         True,
+        "auto_reorder":      True,
+        "clip_to_commune":   False,
+        "clip_buffer_m":     25,
+        "ban_regex_chemin":  r'(?i)(che(?:min)?|sen(?:tier)?) rural|\bC\.?R\.?\b',
+        "ban_regex_voie":    r'(?i)(voi(?:e)?) (com(?:munale)?)|\bV\.?C\.?\b',
+        "last_insee":        "",
+        "checked_layers":    [],
+    }
+
     @staticmethod
     def _settings_path():
-        """Chemin du fichier settings.json dans le profil QGIS."""
-        plugin_dir = os.path.join(QgsApplication.qgisSettingsDirPath(), "chemins_ruraux")
-        os.makedirs(plugin_dir, exist_ok=True)
-        return os.path.join(plugin_dir, "settings.json")
+        """Chemin du fichier settings.json dans le dossier du plugin."""
+        return os.path.join(os.path.dirname(__file__), "settings.json")
 
     @staticmethod
     def _load():
-        """Charge le fichier settings.json ; retourne {} si absent ou corrompu."""
+        """Charge settings.json, complète les clés manquantes avec les défauts,
+        et sauvegarde si des clés ont été ajoutées."""
         path = SettingsDialog._settings_path()
+        data = {}
         if os.path.isfile(path):
             try:
                 with open(path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    data = json.load(f)
             except (json.JSONDecodeError, OSError):
-                return {}
-        return {}
+                data = {}
+        # Injecter les défauts pour les clés absentes
+        missing = {k: v for k, v in SettingsDialog._DEFAULTS.items() if k not in data}
+        if missing:
+            data.update(missing)
+            SettingsDialog._save(data)
+        return data
 
     @staticmethod
     def _save(data):
