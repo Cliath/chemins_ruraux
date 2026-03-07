@@ -155,106 +155,173 @@
        </widget>
       </item>
       <item>
-       <widget class="QCheckBox" name="chkCadastre">
-        <property name="text">
-         <string>Cadastre (10 couches : parcelles, bâtiments, lieux-dits, etc.)</string>
+       <widget class="QTabWidget" name="tabWidgetPlans">
+        <property name="currentIndex">
+         <number>0</number>
         </property>
-        <property name="toolTip">
-         <string>Charge les 10 couches du cadastre (parcelles, bâtiments, lieux-dits, sections, communes, subdivisions fiscales, etc.) via le WMS DGFiP&#10;Licence Ouverte 2.0 (Etalab) — © DGFiP</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="chkPlanIGN">
-        <property name="text">
-         <string>PLAN IGN J+1</string>
-        </property>
-        <property name="toolTip">
-         <string>Charge le PLAN IGN J+1 (GEOGRAPHICALGRIDSYSTEMS.MAPS.BDUNI.J1) via le WMS IGN Géoplateforme&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="chkBDOrtho">
-        <property name="text">
-         <string>BD ORTHO® 20 cm</string>
-        </property>
-        <property name="toolTip">
-         <string>Charge la BD ORTHO® 20 cm (HR.ORTHOIMAGERY.ORTHOPHOTOS) via le WMS IGN Géoplateforme&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="chkMNTLidar">
-        <property name="text">
-         <string>MNT LiDAR HD</string>
-        </property>
-        <property name="toolTip">
-         <string>Charge le MNT issu de LiDAR HD (IGNF_LIDAR-HD_MNT_ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW) via le WMS IGN Géoplateforme&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="chkOsmFR">
-        <property name="text">
-         <string>OSM France</string>
-        </property>
-        <property name="toolTip">
-         <string>Charge les tuiles XYZ OpenStreetMap France comme fond de plan raster&#10;© contributeurs OpenStreetMap — ODbL 1.0</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="chkWazeTiles">
-        <property name="text">
-         <string>Waze</string>
-        </property>
-        <property name="toolTip">
-         <string>Charge les tuiles XYZ Waze Editor (routes) comme fond de plan raster&#10;© Waze — usage non commercial uniquement</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="chkPhotoAeriennes">
-        <property name="text">
-         <string>Photographies aériennes historiques...</string>
-        </property>
-        <property name="toolTip">
-         <string>Ouvre une fenêtre de sélection des photographies aériennes historiques IGN (1950-2023)&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="chkScan50_1950">
-        <property name="text">
-         <string>SCAN 50® 1950 IGN</string>
-        </property>
-        <property name="toolTip">
-         <string>Charge le SCAN 50 de 1950 depuis la Géoplateforme IGN&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="chkScanCassini">
-        <property name="text">
-         <string>Carte de Cassini IGN (XVIIIe siècle)</string>
-        </property>
-        <property name="toolTip">
-         <string>Charge le scan de la carte de Cassini (première carte de France au 1/86400e, XVIIIe siècle) depuis la Géoplateforme IGN&#10;Domaine public — scan © IGN (Licence Ouverte 2.0)</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="chkScanEtatMajor">
-        <property name="text">
-         <string>Carte d'État-Major IGN (1820-1866)</string>
-        </property>
-        <property name="toolTip">
-         <string>Charge le scan de la carte d'État-Major (relevés entre 1820 et 1866) depuis la Géoplateforme IGN&#10;Domaine public — scan © IGN (Licence Ouverte 2.0)</string>
-        </property>
+        <!-- Onglet Actuels -->
+        <widget class="QWidget" name="tabActuels">
+         <attribute name="title">
+          <string>Actuels</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="layoutActuels">
+          <property name="spacing">
+           <number>4</number>
+          </property>
+          <property name="leftMargin"><number>8</number></property>
+          <property name="topMargin"><number>6</number></property>
+          <property name="rightMargin"><number>8</number></property>
+          <property name="bottomMargin"><number>6</number></property>
+          <item>
+           <widget class="QCheckBox" name="chkCadastre">
+            <property name="text">
+             <string>Cadastre (10 couches : parcelles, bâtiments, lieux-dits, etc.)</string>
+            </property>
+            <property name="toolTip">
+             <string>Charge les 10 couches du cadastre (parcelles, bâtiments, lieux-dits, sections, communes, subdivisions fiscales, etc.) via le WMS DGFiP&#10;Licence Ouverte 2.0 (Etalab) — © DGFiP</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chkPlanIGN">
+            <property name="text">
+             <string>PLAN IGN J+1</string>
+            </property>
+            <property name="toolTip">
+             <string>Charge le PLAN IGN J+1 (GEOGRAPHICALGRIDSYSTEMS.MAPS.BDUNI.J1) via le WMS IGN Géoplateforme&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chkBDOrtho">
+            <property name="text">
+             <string>BD ORTHO® 20 cm</string>
+            </property>
+            <property name="toolTip">
+             <string>Charge la BD ORTHO® 20 cm (HR.ORTHOIMAGERY.ORTHOPHOTOS) via le WMS IGN Géoplateforme&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chkMNTLidar">
+            <property name="text">
+             <string>MNT LiDAR HD</string>
+            </property>
+            <property name="toolTip">
+             <string>Charge le MNT issu de LiDAR HD (IGNF_LIDAR-HD_MNT_ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW) via le WMS IGN Géoplateforme&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chkOsmFR">
+            <property name="text">
+             <string>OSM France</string>
+            </property>
+            <property name="toolTip">
+             <string>Charge les tuiles XYZ OpenStreetMap France comme fond de plan raster&#10;© contributeurs OpenStreetMap — ODbL 1.0</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chkWazeTiles">
+            <property name="text">
+             <string>Waze</string>
+            </property>
+            <property name="toolTip">
+             <string>Charge les tuiles XYZ Waze Editor (routes) comme fond de plan raster&#10;© Waze — usage non commercial uniquement</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="spacerActuels">
+            <property name="orientation"><enum>Qt::Vertical</enum></property>
+            <property name="sizeHint" stdset="0"><size><width>0</width><height>0</height></size></property>
+           </spacer>
+          </item>
+         </layout>
+        </widget>
+        <!-- Onglet Historiques -->
+        <widget class="QWidget" name="tabHistoriques">
+         <attribute name="title">
+          <string>Historiques</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="layoutHistoriques">
+          <property name="spacing">
+           <number>4</number>
+          </property>
+          <property name="leftMargin"><number>8</number></property>
+          <property name="topMargin"><number>6</number></property>
+          <property name="rightMargin"><number>8</number></property>
+          <property name="bottomMargin"><number>6</number></property>
+          <item>
+           <widget class="QCheckBox" name="chkPhotoAeriennes">
+            <property name="text">
+             <string>Photographies aériennes historiques...</string>
+            </property>
+            <property name="toolTip">
+             <string>Ouvre une fenêtre de sélection des photographies aériennes historiques IGN (1950-2023)&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chkScan50_1950">
+            <property name="text">
+             <string>SCAN 50® 1950 IGN</string>
+            </property>
+            <property name="toolTip">
+             <string>Charge le SCAN 50 de 1950 depuis la Géoplateforme IGN&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chkScanCassini">
+            <property name="text">
+             <string>Carte de Cassini IGN (XVIIIe siècle)</string>
+            </property>
+            <property name="toolTip">
+             <string>Charge le scan de la carte de Cassini (première carte de France au 1/86400e, XVIIIe siècle) depuis la Géoplateforme IGN&#10;Domaine public — scan © IGN (Licence Ouverte 2.0)</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chkScanEtatMajor">
+            <property name="text">
+             <string>Carte d'État-Major IGN (1820-1866)</string>
+            </property>
+            <property name="toolTip">
+             <string>Charge le scan de la carte d'État-Major (relevés entre 1820 et 1866) depuis la Géoplateforme IGN&#10;Domaine public — scan © IGN (Licence Ouverte 2.0)</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="spacerHistoriques">
+            <property name="orientation"><enum>Qt::Vertical</enum></property>
+            <property name="sizeHint" stdset="0"><size><width>0</width><height>0</height></size></property>
+           </spacer>
+          </item>
+         </layout>
+        </widget>
+        <!-- Onglet Autres (vide) -->
+        <widget class="QWidget" name="tabAutres">
+         <attribute name="title">
+          <string>Autres</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="layoutAutres">
+          <property name="leftMargin"><number>8</number></property>
+          <property name="topMargin"><number>6</number></property>
+          <property name="rightMargin"><number>8</number></property>
+          <property name="bottomMargin"><number>6</number></property>
+          <item>
+           <spacer name="spacerAutres">
+            <property name="orientation"><enum>Qt::Vertical</enum></property>
+            <property name="sizeHint" stdset="0"><size><width>0</width><height>40</height></size></property>
+           </spacer>
+          </item>
+         </layout>
+        </widget>
        </widget>
       </item>
       <item>
