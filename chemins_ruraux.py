@@ -17,7 +17,7 @@ from qgis.core import (QgsProject, QgsVectorLayer, QgsRasterLayer, QgsMessageLog
                        QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, QgsFeature, QgsField,
                        QgsGeometry, QgsPointXY,
                        QgsPalLayerSettings, QgsTextFormat, QgsVectorLayerSimpleLabeling,
-                       QgsTextBufferSettings)
+                       QgsRuleBasedLabeling, QgsTextBufferSettings)
 import re
 import os
 import os.path
@@ -841,6 +841,38 @@ class CheminsRuraux:
         root_rule.appendChild(rule_default)
 
         layer.setRenderer(QgsRuleBasedRenderer(root_rule))
+
+        # ---- Étiquettes via QgsRuleBasedLabeling ----
+        # Une règle par catégorie concernée ; champ brut, sans regex dans l'étiquette.
+        def _make_lbl(field):
+            s = QgsPalLayerSettings()
+            s.isExpression = False
+            s.fieldName = field
+            s.enabled = True
+            s.placement = QgsPalLayerSettings.Line
+            fmt = QgsTextFormat()
+            fmt.setSize(8)
+            fmt.setColor(QColor(0, 0, 0))
+            buf = QgsTextBufferSettings()
+            buf.setEnabled(True)
+            buf.setSize(0.5)
+            buf.setColor(QColor(255, 255, 255))
+            fmt.setBuffer(buf)
+            s.setFormat(fmt)
+            return s
+
+        root_lbl = QgsRuleBasedLabeling.Rule(None)
+
+        rule_lbl_cr = QgsRuleBasedLabeling.Rule(_make_lbl(nom_field))
+        rule_lbl_cr.setFilterExpression(f"regexp_match(\"{nom_field}\", '{regex_chemin}') > 0")
+        root_lbl.appendChild(rule_lbl_cr)
+
+        rule_lbl_vc = QgsRuleBasedLabeling.Rule(_make_lbl(nom_field))
+        rule_lbl_vc.setFilterExpression(f"regexp_match(\"{nom_field}\", '{regex_voie}') > 0")
+        root_lbl.appendChild(rule_lbl_vc)
+
+        layer.setLabeling(QgsRuleBasedLabeling(root_lbl))
+        layer.setLabelsEnabled(True)
         layer.triggerRepaint()
 
     def load_bdtopo_routesnom_wfs(self, code_insee, bbox=None):
@@ -1656,43 +1688,41 @@ class CheminsRuraux:
         cat_autre.setRenderState(False)  # Désactiver par défaut
         categories.append(cat_autre)
         
-        # Créer et appliquer le renderer catégorisé
+        # Appliquer le renderer
         renderer = QgsCategorizedSymbolRenderer(expression, categories)
         layer.setRenderer(renderer)
-        
-        # Configurer les étiquettes avec le nom de la voie
-        # Afficher uniquement pour les chemins ruraux et voies communales
-        
-        label_settings = QgsPalLayerSettings()
-        label_settings.isExpression = True
-        label_settings.fieldName = (
-            f"CASE "
-            f"WHEN regexp_match(\"{field_name}\", '{regex_chemin}') > 0 THEN \"{field_name}\" "
-            f"WHEN regexp_match(\"{field_name}\", '{regex_voie}') > 0 THEN \"{field_name}\" "
-            f"ELSE '' END"
-        )
-        label_settings.enabled = True
-        label_settings.placement = QgsPalLayerSettings.AroundPoint
-        
-        # Format du texte
-        text_format = QgsTextFormat()
-        text_format.setSize(8)
-        text_format.setColor(QColor(0, 0, 0))  # Noir
-        
-        # Ajouter un buffer blanc autour du texte pour meilleure lisibilité
-        buffer = QgsTextBufferSettings()
-        buffer.setEnabled(True)
-        buffer.setSize(0.5)
-        buffer.setColor(QColor(255, 255, 255))  # Blanc
-        text_format.setBuffer(buffer)
-        
-        label_settings.setFormat(text_format)
-        
-        # Appliquer les étiquettes à la couche
-        labeling = QgsVectorLayerSimpleLabeling(label_settings)
-        layer.setLabeling(labeling)
+
+        # ---- Étiquettes via QgsRuleBasedLabeling ----
+        # Une règle par catégorie voulue ; champ brut, sans regex dans l'étiquette.
+        def _make_label_settings(placement):
+            s = QgsPalLayerSettings()
+            s.isExpression = False
+            s.fieldName = field_name
+            s.enabled = True
+            s.placement = placement
+            fmt = QgsTextFormat()
+            fmt.setSize(8)
+            fmt.setColor(QColor(0, 0, 0))
+            buf = QgsTextBufferSettings()
+            buf.setEnabled(True)
+            buf.setSize(0.5)
+            buf.setColor(QColor(255, 255, 255))
+            fmt.setBuffer(buf)
+            s.setFormat(fmt)
+            return s
+
+        root_lbl = QgsRuleBasedLabeling.Rule(None)
+
+        rule_lbl_cr = QgsRuleBasedLabeling.Rule(_make_label_settings(QgsPalLayerSettings.AroundPoint))
+        rule_lbl_cr.setFilterExpression(f"regexp_match(\"{field_name}\", '{regex_chemin}') > 0")
+        root_lbl.appendChild(rule_lbl_cr)
+
+        rule_lbl_vc = QgsRuleBasedLabeling.Rule(_make_label_settings(QgsPalLayerSettings.AroundPoint))
+        rule_lbl_vc.setFilterExpression(f"regexp_match(\"{field_name}\", '{regex_voie}') > 0")
+        root_lbl.appendChild(rule_lbl_vc)
+
+        layer.setLabeling(QgsRuleBasedLabeling(root_lbl))
         layer.setLabelsEnabled(True)
-        
         layer.triggerRepaint()
         
         QgsMessageLog.logMessage(
