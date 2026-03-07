@@ -75,93 +75,155 @@
        </widget>
       </item>
       <item>
-       <widget class="QCheckBox" name="chkCommune">
-        <property name="text">
-         <string>Emprise communale (Admin Express IGN)</string>
+       <widget class="QTabWidget" name="tabWidgetDonnees">
+        <property name="currentIndex">
+         <number>0</number>
         </property>
-        <property name="toolTip">
-         <string>Charge le contour de la commune (Admin Express COG IGN) filtré sur le code INSEE saisi&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="chkBDTopoRoutesNom">
-        <property name="text">
-        <string>Routes numérotées ou nommées (BD TOPO® IGN)</string>
-        </property>
-        <property name="toolTip">
-         <string>Charge les routes numérotées ou nommées (BDTOPO_V3:route_numerotee_ou_nommee) filtrées sur l'emprise de la commune&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="chkBDTopoTroncons">
-        <property name="text">
-         <string>Tronçons de route (BD TOPO® IGN)</string>
-        </property>
-        <property name="toolTip">
-         <string>Charge les tronçons de route (BDTOPO_V3:troncon_de_route) filtrés sur l'emprise de la commune, avec pagination&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="chkOsmRoutes">
-        <property name="text">
-        <string>Routes OSM (Overpass)</string>
-        </property>
-        <property name="toolTip">
-         <string>Télécharge les routes OSM filtrées sur la commune&#10;© contributeurs OpenStreetMap — ODbL 1.0</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="chkMagOsm">
-        <property name="text">
-         <string>Réseau routier OSM (MagOSM)</string>
-        </property>
-        <property name="toolTip">
-         <string>Charge le réseau routier OSM (magosm:highways_line) via le WFS MagOSM (Magellium), catégorisé par type highway&#10;© contributeurs OpenStreetMap — ODbL 1.0 | Service : Magellium MagOSM</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="chkVoirie">
-        <property name="text">
-         <string>Voirie communale (DGCL 2025)</string>
-        </property>
-        <property name="toolTip">
-         <string>Charge le réseau de voirie communale (calcul IGN pour la DGCL)&#10;Licence Ouverte 2.0 (Etalab) — © IGN / DGCL</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="chkVoirieDep">
-        <property name="text">
-         <string>Voirie départementale (DGCL 2025)</string>
-        </property>
-        <property name="toolTip">
-         <string>Charge le réseau de voirie départementale (calcul IGN pour la DGCL)&#10;Licence Ouverte 2.0 (Etalab) — © IGN / DGCL</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="chkBAN">
-        <property name="text">
-         <string>Adresses (Base Adresse Nationale - BAN)</string>
-        </property>
-        <property name="toolTip">
-         <string>Charge toutes les adresses de la commune (peut être lent pour les grandes villes)&#10;Licence Ouverte 2.0 (Etalab) — © DINUM / collectivités</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="chkMajic">
-        <property name="text">
-        <string>Parcelles personnes morales (MAJIC)</string>
-        </property>
-        <property name="toolTip">
-         <string>Charge les parcelles cadastrales détenues par des personnes morales (données DGFiP via Koumoul)&#10;Licence Ouverte 2.0 (Etalab) — © DGFiP</string>
-        </property>
+        <!-- Onglet Nationales -->
+        <widget class="QWidget" name="tabNationales">
+         <attribute name="title">
+          <string>Nationales</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="layoutNationales">
+          <property name="spacing"><number>4</number></property>
+          <property name="leftMargin"><number>8</number></property>
+          <property name="topMargin"><number>6</number></property>
+          <property name="rightMargin"><number>8</number></property>
+          <property name="bottomMargin"><number>6</number></property>
+          <item>
+           <widget class="QCheckBox" name="chkCommune">
+            <property name="text">
+             <string>Emprise communale (Admin Express IGN)</string>
+            </property>
+            <property name="toolTip">
+             <string>Charge le contour de la commune (Admin Express COG IGN) filtré sur le code INSEE saisi&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chkBDTopoRoutesNom">
+            <property name="text">
+             <string>Routes numérotées ou nommées (BD TOPO® IGN)</string>
+            </property>
+            <property name="toolTip">
+             <string>Charge les routes numérotées ou nommées (BDTOPO_V3:route_numerotee_ou_nommee) filtrées sur l'emprise de la commune&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chkBDTopoTroncons">
+            <property name="text">
+             <string>Tronçons de route (BD TOPO® IGN)</string>
+            </property>
+            <property name="toolTip">
+             <string>Charge les tronçons de route (BDTOPO_V3:troncon_de_route) filtrés sur l'emprise de la commune, avec pagination&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chkOsmRoutes">
+            <property name="text">
+             <string>Routes OSM (Overpass)</string>
+            </property>
+            <property name="toolTip">
+             <string>Télécharge les routes OSM filtrées sur la commune&#10;© contributeurs OpenStreetMap — ODbL 1.0</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chkMagOsm">
+            <property name="text">
+             <string>Réseau routier OSM (MagOSM)</string>
+            </property>
+            <property name="toolTip">
+             <string>Charge le réseau routier OSM (magosm:highways_line) via le WFS MagOSM (Magellium), catégorisé par type highway&#10;© contributeurs OpenStreetMap — ODbL 1.0 | Service : Magellium MagOSM</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chkVoirie">
+            <property name="text">
+             <string>Voirie communale (DGCL 2025)</string>
+            </property>
+            <property name="toolTip">
+             <string>Charge le réseau de voirie communale (calcul IGN pour la DGCL)&#10;Licence Ouverte 2.0 (Etalab) — © IGN / DGCL</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chkVoirieDep">
+            <property name="text">
+             <string>Voirie départementale (DGCL 2025)</string>
+            </property>
+            <property name="toolTip">
+             <string>Charge le réseau de voirie départementale (calcul IGN pour la DGCL)&#10;Licence Ouverte 2.0 (Etalab) — © IGN / DGCL</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chkBAN">
+            <property name="text">
+             <string>Adresses (Base Adresse Nationale - BAN)</string>
+            </property>
+            <property name="toolTip">
+             <string>Charge toutes les adresses de la commune (peut être lent pour les grandes villes)&#10;Licence Ouverte 2.0 (Etalab) — © DINUM / collectivités</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chkMajic">
+            <property name="text">
+             <string>Parcelles personnes morales (MAJIC)</string>
+            </property>
+            <property name="toolTip">
+             <string>Charge les parcelles cadastrales détenues par des personnes morales (données DGFiP via Koumoul)&#10;Licence Ouverte 2.0 (Etalab) — © DGFiP</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="spacerNationales">
+            <property name="orientation"><enum>Qt::Vertical</enum></property>
+            <property name="sizeHint" stdset="0"><size><width>0</width><height>0</height></size></property>
+           </spacer>
+          </item>
+         </layout>
+        </widget>
+        <!-- Onglet Locales -->
+        <widget class="QWidget" name="tabLocales">
+         <attribute name="title">
+          <string>Locales</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="layoutLocales">
+          <property name="leftMargin"><number>8</number></property>
+          <property name="topMargin"><number>6</number></property>
+          <property name="rightMargin"><number>8</number></property>
+          <property name="bottomMargin"><number>6</number></property>
+          <item>
+           <spacer name="spacerLocales">
+            <property name="orientation"><enum>Qt::Vertical</enum></property>
+            <property name="sizeHint" stdset="0"><size><width>0</width><height>40</height></size></property>
+           </spacer>
+          </item>
+         </layout>
+        </widget>
+        <!-- Onglet Autre -->
+        <widget class="QWidget" name="tabDonneesAutre">
+         <attribute name="title">
+          <string>Autre</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="layoutDonneesAutre">
+          <property name="leftMargin"><number>8</number></property>
+          <property name="topMargin"><number>6</number></property>
+          <property name="rightMargin"><number>8</number></property>
+          <property name="bottomMargin"><number>6</number></property>
+          <item>
+           <spacer name="spacerDonneesAutre">
+            <property name="orientation"><enum>Qt::Vertical</enum></property>
+            <property name="sizeHint" stdset="0"><size><width>0</width><height>40</height></size></property>
+           </spacer>
+          </item>
+         </layout>
+        </widget>
        </widget>
       </item>
       <item>

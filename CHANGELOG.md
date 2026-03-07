@@ -1,3 +1,7 @@
+# [0.13.6] - 2026-03-07
+### Modifié
+- **Interface** : la section "Données à charger" est maintenant organisée en 3 onglets — **Nationales** (toutes les couches existantes : Admin Express, BD TOPO, OSM, MagOSM, DGCL, BAN, MAJIC), **Locales** (vide, prévu pour des données locales), **Autre** (vide, réservé).
+
 # [0.13.5] - 2026-03-07
 ### Modifié
 - **Regex BAN chemin rural** : réécriture pour couvrir toutes les abréviations courantes (`ch`, `che`, `chem`, `chin`, `chemin`, `cheminement`, `sen`, `sente`, `sentier`) avec suffixe rural tronqué (`r`, `ru`, `rur`, `ral`, `rle`, `rural`, `rurale`), plus point optionnel entre préfixe et suffixe. Ancienne regex : `(?i)(che(?:min)?|sen(?:tier)?) rural|\bC\.?R\.?\b`.
