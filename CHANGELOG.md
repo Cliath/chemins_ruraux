@@ -1,3 +1,9 @@
+# [0.13.4] - 2026-03-07
+### Ajouté
+- **`build.bat`** : crée un tag `vX.Y.Z` après chaque commit et une GitHub Release avec le ZIP attaché (`gh release create --generate-notes`). Requiert le GitHub CLI (`gh`) installé et authentifié (`gh auth login`).
+### Modifié
+- **`metadata.txt`** : `name` corrigé en `Voirie Communale` (au lieu de `chemins_ruraux`), champ `tags` ajouté (voirie, commune, chemin rural…).
+
 # [0.13.3] - 2026-03-07
 ### Corrigé
 - **README** : MagOSM Routes ajouté dans l'ordre canonique, le tableau des couches vectorielles, la section style et la table des services.
