@@ -1,6 +1,6 @@
 # [0.13.6] - 2026-03-07
 ### Modifié
-- **Interface** : la section "Données à charger" est maintenant organisée en 3 onglets — **Nationales** (toutes les couches existantes : Admin Express, BD TOPO, OSM, MagOSM, DGCL, BAN, MAJIC), **Locales** (vide, prévu pour des données locales), **Autre** (vide, réservé).
+- **Interface** : la section "Données à charger" est maintenant organisée en 3 onglets — **Nationales** (toutes les couches existantes : Admin Express, BD TOPO, OSM, MagOSM, DGCL, BAN, MAJIC), **Locales** (vide, prévu pour des données locales), **Autres** (vide, réservé).
 
 # [0.13.5] - 2026-03-07
 ### Modifié

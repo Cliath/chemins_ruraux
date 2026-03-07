@@ -206,10 +206,10 @@
           </item>
          </layout>
         </widget>
-        <!-- Onglet Autre -->
+        <!-- Onglet Autres -->
         <widget class="QWidget" name="tabDonneesAutre">
          <attribute name="title">
-          <string>Autre</string>
+          <string>Autres</string>
          </attribute>
          <layout class="QVBoxLayout" name="layoutDonneesAutre">
           <property name="leftMargin"><number>8</number></property>
