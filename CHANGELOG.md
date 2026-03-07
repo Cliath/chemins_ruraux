@@ -1,3 +1,7 @@
+# [0.13.3] - 2026-03-07
+### Corrigé
+- **README** : MagOSM Routes ajouté dans l'ordre canonique, le tableau des couches vectorielles, la section style et la table des services.
+
 # [0.13.2] - 2026-03-07
 ### Corrigé
 - **Ordre canonique** : `MagOSM Routes {code_insee}` ajouté dans `layer_order.json`, juste après `OSM Routes {code_insee}`.

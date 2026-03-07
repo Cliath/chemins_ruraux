@@ -1,7 +1,7 @@
 # Voirie Communale - Plugin QGIS
 
 Plugin QGIS pour le recensement de la voirie communale (voies communales et chemins ruraux).  
-Version actuelle : **0.13.2**
+Version actuelle : **0.13.3**
 
 ## Installation
 
@@ -36,7 +36,7 @@ Ou via `build.bat` qui compile, package, push git et déploie en une commande :
 - **Barre de lancement** : le bouton du plugin ouvre 5 actions : *Charger des données*, *Numériser des données* (à venir), *Liste des tâches*, *Paramètres*, *À propos*
 - **Mémorisation** : dernier code INSEE et sélection des couches restaurés automatiquement à l'ouverture
 - **Paramètres** : zoom automatique, réordonnancement automatique, regex de filtrage des voies, et ordre des couches configurable par glisser-déposer
-- **Ordre canonique** configurable via `layer_order.json` (haut → bas) : BD TOPO Tronçons → BD TOPO Routes → Voirie comm. → Voirie dép. → OSM Routes → BAN → MAJIC → Commune → Cadastre → PLAN IGN → Waze → OSM France → CoSIA → BD ORTHO® → Photos aériennes → SCAN 50® → Cassini → État-Major
+- **Ordre canonique** configurable via `layer_order.json` (haut → bas) : BD TOPO Tronçons → BD TOPO Routes → Voirie comm. → Voirie dép. → OSM Routes → MagOSM Routes → BAN → MAJIC → Commune → Cadastre → PLAN IGN → Waze → OSM France → CoSIA → BD ORTHO® → Photos aériennes → SCAN 50® → Cassini → État-Major
 
 ### Données vectorielles (filtrées par code INSEE ou BBOX communale)
 
@@ -47,6 +47,7 @@ Ou via `build.bat` qui compile, package, push git et déploie en une commande :
 | **Voirie communale DGCL 2025** | IGN Géoplateforme WFS | BBOX commune |
 | **Voirie départementale DGCL 2025** | IGN Géoplateforme WFS | BBOX commune |
 | **Routes OSM** (CE / C / R) | Overpass API | BBOX commune |
+| **Réseau routier OSM MagOSM** (paginé) | MagOSM WFS — Magellium | BBOX commune |
 | **BD TOPO routes nommées** | IGN Géoplateforme WFS | BBOX commune |
 | **BD TOPO tronçons de route** (paginé) | IGN Géoplateforme WFS | BBOX commune |
 | **Parcelles MAJIC** (personnes morales) | API Koumoul (DGFiP) + IGN WFS | code INSEE |
@@ -63,6 +64,14 @@ Le style utilise un `QgsRuleBasedRenderer` sur le champ `nom_collaboratif_gauche
 - 🟢 **CE** – Chemin d'exploitation (`ref` commence par `CE`)
 - 🟠 **C** – Voie communale (`ref` commence par `C`, hors `CE`)
 - 🔴 **R** – Chemin rural (`ref` commence par `R`)
+
+#### Réseau routier OSM MagOSM — style par règles
+
+Le style utilise un `QgsRuleBasedRenderer` sur la couche `magosm:highways_line` :
+
+- Les regex de filtrage (chemin rural / voie communale, paramétrables) sont appliquées en priorité sur le champ `name`
+- Puis catégorisation par valeur du champ `highway` (motorway, trunk, primary… track, path, footway, cycleway…)
+- Service parfois lent — timeout de 180 s par page, pagination 500 entités/page
 
 ### Plans de fond
 
@@ -129,6 +138,7 @@ chemins_ruraux/
 | IGN Géoplateforme WMS | `https://data.geopf.fr/wms/r` |
 | Cadastre INSPIRE DGFiP | `https://inspire.cadastre.gouv.fr/scpc/{codeINSEE}.wms` |
 | Overpass API (OSM) | `https://overpass-api.de/api/interpreter` |
+| MagOSM WFS (Magellium) | `https://magosm.magellium.com/geoserver/ows` |
 | API Koumoul (MAJIC) | `https://koumoul.com/data-fair/api/v1/datasets/parcelles-des-personnes-morales` |
 
 ## Licence
