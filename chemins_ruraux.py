@@ -739,14 +739,22 @@ class CheminsRuraux:
                 canvas.zoomToFullExtent()
                 canvas.refresh()
 
-        # Message récapitulatif si plusieurs types de données ont été chargés
-        if len(results) > 1:
+        # Message récapitulatif de fin de chargement
+        if len(results) >= 1:
             if success_count == len(results):
-                QMessageBox.information(
-                    self.iface.mainWindow(),
-                    "Chargement terminé",
-                    f"Toutes les données ont été chargées avec succès pour le code INSEE {code_insee}."
-                )
+                if len(results) == 1:
+                    source_name = results[0][0]
+                    QMessageBox.information(
+                        self.iface.mainWindow(),
+                        "Chargement terminé",
+                        f"{source_name} chargé avec succès pour le code INSEE {code_insee}."
+                    )
+                else:
+                    QMessageBox.information(
+                        self.iface.mainWindow(),
+                        "Chargement terminé",
+                        f"Toutes les données ont été chargées avec succès pour le code INSEE {code_insee}."
+                    )
             elif success_count > 0:
                 success_types = [name for name, success in results if success]
                 failed_types = [name for name, success in results if not success]
@@ -1823,54 +1831,43 @@ class CheminsRuraux:
             )
             return
         
-        # Définir les catégories avec expressions regex QGIS
-        # regexp_match retourne la position (>0) si trouvé, 0 sinon
-        expression = f"""
-        CASE 
-            WHEN regexp_match("{field_name}", '{self._qgis_expr_regex(regex_chemin)}') > 0 THEN 'Chemin rural'
-            WHEN regexp_match("{field_name}", '{self._qgis_expr_regex(regex_voie)}') > 0 THEN 'Voie communale'
-            ELSE 'Autre'
-        END
-        """
-        
-        # Créer les symboles pour chaque catégorie
-        categories = []
-        
-        # Chemin rural - Marron/Orange
-        symbol_chemin = QgsMarkerSymbol.createSimple({
-            'name': 'circle',
-            'color': '#D2691E',  # Chocolat
-            'size': '3',
-            'outline_color': '#8B4513',  # Saddle brown
-            'outline_width': '0.5'
-        })
-        categories.append(QgsRendererCategory('Chemin rural', symbol_chemin, 'Chemin rural'))
-        
-        # Voie communale - Bleu
-        symbol_voie = QgsMarkerSymbol.createSimple({
-            'name': 'circle',
-            'color': '#4169E1',  # Royal blue
-            'size': '3',
-            'outline_color': '#191970',  # Midnight blue
-            'outline_width': '0.5'
-        })
-        categories.append(QgsRendererCategory('Voie communale', symbol_voie, 'Voie communale'))
-        
-        # Autre - Gris
-        symbol_autre = QgsMarkerSymbol.createSimple({
-            'name': 'circle',
-            'color': '#808080',  # Gris
-            'size': '2.5',
-            'outline_color': '#505050',
-            'outline_width': '0.5'
-        })
-        cat_autre = QgsRendererCategory('Autre', symbol_autre, 'Autre')
-        cat_autre.setRenderState(False)  # Désactiver par défaut
-        categories.append(cat_autre)
-        
-        # Appliquer le renderer
-        renderer = QgsCategorizedSymbolRenderer(expression, categories)
-        layer.setRenderer(renderer)
+        # Renderer à règles : chaque règle porte une regex de filtre + un symbole ponctuel.
+        # QgsRuleBasedRenderer est préférable à QgsCategorizedSymbolRenderer avec une
+        # expression CASE WHEN, car QGIS n'affiche pas l'expression dans la légende.
+        from qgis.core import QgsRuleBasedRenderer
+
+        def make_marker(color, outline_color, size='3'):
+            return QgsMarkerSymbol.createSimple({
+                'name': 'circle', 'color': color, 'size': size,
+                'outline_color': outline_color, 'outline_width': '0.5'
+            })
+
+        root_rule = QgsRuleBasedRenderer.Rule(None)
+
+        # Chemin rural – marron chocolat
+        rule_cr = QgsRuleBasedRenderer.Rule(make_marker('#D2691E', '#8B4513'))
+        rule_cr.setLabel('Chemin rural')
+        rule_cr.setFilterExpression(
+            f"regexp_match(\"{field_name}\", '{self._qgis_expr_regex(regex_chemin)}') > 0"
+        )
+        root_rule.appendChild(rule_cr)
+
+        # Voie communale – bleu royal
+        rule_vc = QgsRuleBasedRenderer.Rule(make_marker('#4169E1', '#191970'))
+        rule_vc.setLabel('Voie communale')
+        rule_vc.setFilterExpression(
+            f"regexp_match(\"{field_name}\", '{self._qgis_expr_regex(regex_voie)}') > 0"
+        )
+        root_rule.appendChild(rule_vc)
+
+        # Autre – gris, désactivé par défaut
+        rule_autre = QgsRuleBasedRenderer.Rule(make_marker('#808080', '#505050', '2.5'))
+        rule_autre.setLabel('Autre')
+        rule_autre.setActive(False)
+        rule_autre.setIsElse(True)   # s'applique à tout ce qui n'est pas matché
+        root_rule.appendChild(rule_autre)
+
+        layer.setRenderer(QgsRuleBasedRenderer(root_rule))
 
         # ---- Étiquettes via QgsRuleBasedLabeling ----
         # Une règle par catégorie voulue ; champ brut, sans regex dans l'étiquette.

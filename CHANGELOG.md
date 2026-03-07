@@ -1,3 +1,8 @@
+# [0.12.7] - 2026-03-07
+### Corrigé
+- **Message de fin de chargement absent** : le message récapitulatif n'était affiché que si plusieurs sources étaient chargées (`len(results) > 1`). Il est désormais affiché pour n'importe quel chargement, y compris BAN seule.
+- **Légende BAN : expression regex visible** : `QgsCategorizedSymbolRenderer` avec une expression CASE WHEN affichait la regex entière comme titre dans le panneau des couches. Remplacé par `QgsRuleBasedRenderer` (même approche que BD TOPO tronçons) : la légende n'affiche plus que les libellés "Chemin rural", "Voie communale", "Autre".
+
 # [0.12.6] - 2026-03-07
 ### Corrigé
 - **Catégorisation BAN/BD TOPO** : expression QGIS `regexp_match(field, '...')` interprète `\b` comme retour arrière et supprime `\`, rendant la regex invalide (ex. `\bC\.?R\.?\b` → `?C??R???`). Correction : les backslashes sont doublés avant intégration dans l'expression (`_qgis_expr_regex`).
