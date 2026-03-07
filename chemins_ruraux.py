@@ -921,8 +921,8 @@ class CheminsRuraux:
         Returns:
             tuple: (bool, QgsVectorLayer ou None)
         """
-        _BAN_REGEX_CHEMIN_DEFAULT = r'(?i)(che(?:min)?|sen(?:tier)?) rural|\bC\.?R\.?\b'
-        _BAN_REGEX_VOIE_DEFAULT   = r'(?i)(voi(?:e)?) (com(?:munale)?)|\bV\.?C\.?\b'
+        _BAN_REGEX_CHEMIN_DEFAULT = r'(?i)\b(?:ch(?:e(?:m(?:in(?:ement)?)?)?|in)?|sen(?:t(?:e|ier)?)?)\.?\s+r(?:u(?:r(?:al?e?)?)?|al|le)\b|\bC\.?R\.?\b'
+        _BAN_REGEX_VOIE_DEFAULT   = r'(?i)\b(?:voi(?:e)?|ch(?:e(?:m(?:in(?:ement)?)?)?)?|rout(?:e)?)\.?\s+c(?:om(?:m(?:un(?:al?e?)?)?)?|al?e?|le)\b|\bV\.?C\.?\b'
         regex_chemin = self._get_regex_setting('ban_regex_chemin', _BAN_REGEX_CHEMIN_DEFAULT)
         regex_voie   = self._get_regex_setting('ban_regex_voie',   _BAN_REGEX_VOIE_DEFAULT)
 
@@ -1923,10 +1923,10 @@ class CheminsRuraux:
             style_callback=lambda lyr: self.apply_ban_style(
                 lyr,
                 regex_chemin=self._get_regex_setting(
-                    'ban_regex_chemin', r'(?i)(che(?:min)?|sen(?:tier)?) rural|\bC\.?R\.?\b'
+                    'ban_regex_chemin', r'(?i)\b(?:ch(?:e(?:m(?:in(?:ement)?)?)?|in)?|sen(?:t(?:e|ier)?)?)\.?\s+r(?:u(?:r(?:al?e?)?)?|al|le)\b|\bC\.?R\.?\b'
                 ),
                 regex_voie=self._get_regex_setting(
-                    'ban_regex_voie', r'(?i)(voi(?:e)?) (com(?:munale)?)|\bV\.?C\.?\b'
+                    'ban_regex_voie', r'(?i)\b(?:voi(?:e)?|ch(?:e(?:m(?:in(?:ement)?)?)?)?|rout(?:e)?)\.?\s+c(?:om(?:m(?:un(?:al?e?)?)?)?|al?e?|le)\b|\bV\.?C\.?\b'
                 ),
             )
         )
@@ -2522,8 +2522,8 @@ class CheminsRuraux:
         self._remove_layers_by_name(layer_name)
         QgsProject.instance().addMapLayer(layer)
 
-        _BAN_REGEX_CHEMIN_DEFAULT = r'(?i)(che(?:min)?|sen(?:tier)?) rural|\bC\.?R\.?\b'
-        _BAN_REGEX_VOIE_DEFAULT   = r'(?i)(voi(?:e)?) (com(?:munale)?)|\bV\.?C\.?\b'
+        _BAN_REGEX_CHEMIN_DEFAULT = r'(?i)\b(?:ch(?:e(?:m(?:in(?:ement)?)?)?|in)?|sen(?:t(?:e|ier)?)?)\.?\s+r(?:u(?:r(?:al?e?)?)?|al|le)\b|\bC\.?R\.?\b'
+        _BAN_REGEX_VOIE_DEFAULT   = r'(?i)\b(?:voi(?:e)?|ch(?:e(?:m(?:in(?:ement)?)?)?)?|rout(?:e)?)\.?\s+c(?:om(?:m(?:un(?:al?e?)?)?)?|al?e?|le)\b|\bV\.?C\.?\b'
         regex_chemin = self._get_regex_setting('ban_regex_chemin', _BAN_REGEX_CHEMIN_DEFAULT)
         regex_voie   = self._get_regex_setting('ban_regex_voie',   _BAN_REGEX_VOIE_DEFAULT)
         self._apply_magosm_style(layer, regex_chemin=regex_chemin, regex_voie=regex_voie)
