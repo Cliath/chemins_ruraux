@@ -44,8 +44,8 @@ if !ERRORLEVEL! NEQ 0 (
 )
 echo.
 
-REM Etape 4 : Publication sur GitHub
-echo [4/4] Publication sur GitHub...
+REM Etape 4 : Commit, tag et push
+echo [4/6] Publication sur GitHub (commit + tag)...
 REM Recherche de git.exe (PATH systeme ou GitHub Desktop)
 set GIT_EXE=
 where git >nul 2>&1
@@ -55,7 +55,7 @@ if !ERRORLEVEL! EQU 0 (
     for /f "delims=" %%G in ('powershell -NoProfile -Command "Get-ChildItem \"$env:LOCALAPPDATA\GitHubDesktop\" -Recurse -Filter git.exe -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName"') do set GIT_EXE=%%G
 )
 if not defined GIT_EXE (
-    echo AVERTISSEMENT : git non trouve, etape GitHub ignoree
+    echo AVERTISSEMENT : git non trouve, etapes GitHub ignorees
     goto :deploy
 )
 !GIT_EXE! add --all
@@ -71,19 +71,47 @@ if !ERRORLEVEL! EQU 0 (
         echo Erreur lors du commit
         exit /b 1
     )
-    !GIT_EXE! push
-    if !ERRORLEVEL! NEQ 0 (
-        echo Erreur lors du push
-        exit /b 1
-    )
-    echo Push vers GitHub reussi
+)
+REM Tag de version (ecrase si existant)
+!GIT_EXE! tag -f v!VERSION!
+!GIT_EXE! push
+!GIT_EXE! push origin v!VERSION! --force
+if !ERRORLEVEL! NEQ 0 (
+    echo Erreur lors du push
+    exit /b 1
+)
+echo Push et tag v!VERSION! envoyes vers GitHub
+echo.
+
+REM Etape 5 : GitHub Release avec le ZIP
+echo [5/6] Creation de la GitHub Release v!VERSION!...
+set GH_EXE=
+where gh >nul 2>&1
+if !ERRORLEVEL! EQU 0 (
+    set GH_EXE=gh
+) else (
+    for /f "delims=" %%H in ('powershell -NoProfile -Command "Get-ChildItem \"$env:LOCALAPPDATA\Programs\GitHub CLI\" -Recurse -Filter gh.exe -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName"') do set GH_EXE=%%H
+)
+if not defined GH_EXE (
+    echo AVERTISSEMENT : GitHub CLI (gh) non trouve, GitHub Release ignoree
+    goto :deploy
+)
+set PYTHONUTF8=1
+python get_commit_message.py > .release_notes.txt
+!GH_EXE! release delete v!VERSION! --yes >nul 2>&1
+!GH_EXE! release create v!VERSION! "releases\chemins_ruraux-!VERSION!.zip" --title "v!VERSION!" --notes-file .release_notes.txt
+del .release_notes.txt
+if !ERRORLEVEL! NEQ 0 (
+    echo Erreur lors de la creation de la GitHub Release
+) else (
+    echo GitHub Release v!VERSION! creee avec le ZIP
 )
 echo.
 
 :deploy
-REM Etape 5 : Deploiement automatique dans QGIS
+REM Etape 6 : Deploiement automatique dans QGIS
 set QGIS_PLUGINS=%APPDATA%\QGIS\QGIS3\profiles\default\python\plugins\chemins_ruraux
-echo [5/5] Deploiement vers %QGIS_PLUGINS%...
+echo [6/6] Deploiement vers %QGIS_PLUGINS%...
 powershell -Command "$zip = Get-ChildItem 'd:\chemins_ruraux\releases\chemins_ruraux-*.zip' | Sort-Object LastWriteTime -Descending | Select-Object -First 1; if ($zip) { Expand-Archive -Path $zip.FullName -DestinationPath (Split-Path '%QGIS_PLUGINS%') -Force; Write-Host ('Deploye : ' + $zip.Name) } else { Write-Host 'ZIP non trouve'; exit 1 }"
 if %ERRORLEVEL% GTR 7 (
     echo Erreur lors du deploiement
