@@ -1,3 +1,7 @@
+# [0.13.1] - 2026-03-07
+### Ajouté
+- **Réseau routier OSM via MagOSM** : nouvelle case à cocher "Réseau routier OSM (MagOSM)" qui charge la couche `magosm:highways_line` depuis le WFS public de Magellium (`https://magosm.magellium.com/geoserver/ows`). Le chargement est paginé (500 entités/page, timeout 180 s) pour s'adapter à la lenteur du service. Le style est calqué sur BD TOPO tronçons : règles regex CR/VC prioritaires sur le champ `name`, puis catégorisation par valeur du champ `highway` (motorway → steps), étiquettes sur `name`.
+
 # [0.13.0] - 2026-03-07
 ### Ajouté
 - **Paramètres dans un fichier JSON** : les paramètres du plugin (précédemment stockés dans le registre Windows via `QgsSettings`) sont désormais persistés dans un fichier `settings.json` local au dossier du plugin. Le fichier est UTF-8, lisible et éditable manuellement, et se crée automatiquement au premier usage à partir des valeurs par défaut (`_DEFAULTS`). Il n'est ni inclus dans le ZIP ni versionné dans git, ce qui évite d'écraser les réglages utilisateur lors d'une mise à jour et d'exposer des données personnelles (`last_insee`, `checked_layers`) dans le dépôt.

@@ -115,6 +115,16 @@
        </widget>
       </item>
       <item>
+       <widget class="QCheckBox" name="chkMagOsm">
+        <property name="text">
+         <string>Réseau routier OSM (MagOSM)</string>
+        </property>
+        <property name="toolTip">
+         <string>Charge le réseau routier OSM (magosm:highways_line) via le WFS MagOSM (Magellium), catégorisé par type highway&#10;© contributeurs OpenStreetMap — ODbL 1.0 | Service : Magellium MagOSM</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QCheckBox" name="chkVoirie">
         <property name="text">
          <string>Voirie communale (DGCL 2025)</string>

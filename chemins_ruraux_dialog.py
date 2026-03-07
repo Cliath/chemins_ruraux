@@ -29,7 +29,7 @@ class CheminsRurauxDialog(QtWidgets.QDialog, Ui_CheminsRurauxDialogBase):
         self.setupUi(self)
         # Liste de toutes les cases à cocher de sélection de couches
         self._layer_checkboxes = [
-            'chkCommune', 'chkBDTopoRoutesNom', 'chkBDTopoTroncons', 'chkOsmRoutes',
+            'chkCommune', 'chkBDTopoRoutesNom', 'chkBDTopoTroncons', 'chkOsmRoutes', 'chkMagOsm',
             'chkVoirie', 'chkVoirieDep', 'chkBAN', 'chkMajic',
             'chkCadastre', 'chkPlanIGN', 'chkBDOrtho', 'chkMNTLidar',
             'chkOsmFR', 'chkWazeTiles', 'chkCoSIA', 'chkPhotoAeriennes',

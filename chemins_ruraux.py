@@ -435,6 +435,7 @@ class CheminsRuraux:
         osm_routes_checked = self.dlg.chkOsmRoutes.isChecked()
         bdtopo_routesnom_checked = hasattr(self.dlg, 'chkBDTopoRoutesNom') and self.dlg.chkBDTopoRoutesNom.isChecked()
         bdtopo_troncons_checked = hasattr(self.dlg, 'chkBDTopoTroncons') and self.dlg.chkBDTopoTroncons.isChecked()
+        magosm_checked = hasattr(self.dlg, 'chkMagOsm') and self.dlg.chkMagOsm.isChecked()
         majic_checked = self.dlg.chkMajic.isChecked()
         scan_etat_major_checked = hasattr(self.dlg, 'chkScanEtatMajor') and self.dlg.chkScanEtatMajor.isChecked()
         scan_cassini_checked = hasattr(self.dlg, 'chkScanCassini') and self.dlg.chkScanCassini.isChecked()
@@ -448,11 +449,11 @@ class CheminsRuraux:
         plan_ign_checked = hasattr(self.dlg, 'chkPlanIGN') and self.dlg.chkPlanIGN.isChecked()
 
         # La commune est obligatoire dès qu'une donnée nécessite un filtre géométrique BBOX
-        needs_bbox = voirie_checked or voirie_dep_checked or osm_routes_checked or bdtopo_routesnom_checked or bdtopo_troncons_checked
+        needs_bbox = voirie_checked or voirie_dep_checked or osm_routes_checked or bdtopo_routesnom_checked or bdtopo_troncons_checked or magosm_checked
         if needs_bbox:
             commune_checked = True
         
-        if not cadastre_checked and not commune_checked and not ban_checked and not voirie_checked and not voirie_dep_checked and not osm_routes_checked and not bdtopo_routesnom_checked and not bdtopo_troncons_checked and not majic_checked and not scan_etat_major_checked and not scan_cassini_checked and not scan50_1950_checked and not waze_tiles_checked and not osmfr_checked and not cosia_checked and not photo_aeriennes_checked and not bd_ortho_checked and not mnt_lidar_checked and not plan_ign_checked:
+        if not cadastre_checked and not commune_checked and not ban_checked and not voirie_checked and not voirie_dep_checked and not osm_routes_checked and not magosm_checked and not bdtopo_routesnom_checked and not bdtopo_troncons_checked and not majic_checked and not scan_etat_major_checked and not scan_cassini_checked and not scan50_1950_checked and not waze_tiles_checked and not osmfr_checked and not cosia_checked and not photo_aeriennes_checked and not bd_ortho_checked and not mnt_lidar_checked and not plan_ign_checked:
             QMessageBox.warning(
                 self.iface.mainWindow(),
                 "Sélection requise",
@@ -491,7 +492,7 @@ class CheminsRuraux:
         # La commune n'est pas comptée si elle est réutilisée (pas de téléchargement)
         steps = sum([
             cadastre_checked, commune_checked and not commune_reuse, ban_checked,
-            voirie_checked, voirie_dep_checked, osm_routes_checked,
+            voirie_checked, voirie_dep_checked, osm_routes_checked, magosm_checked,
             bdtopo_routesnom_checked, bdtopo_troncons_checked, majic_checked,
             scan_etat_major_checked, scan_cassini_checked, scan50_1950_checked,
             waze_tiles_checked, osmfr_checked, cosia_checked, bd_ortho_checked, mnt_lidar_checked, plan_ign_checked
@@ -595,6 +596,15 @@ class CheminsRuraux:
                 if clip_to_commune and commune_layer:
                     osm_layer = self._clip_layer_to_commune(osm_layer, commune_layer, clip_buffer_m)
                 loaded_layers.append(osm_layer)
+
+        if magosm_checked:
+            advance(f"Chargement réseau routier OSM MagOSM ({code_insee})...")
+            magosm_success, magosm_layer = self.load_magosm_wfs(code_insee, commune_bbox)
+            results.append(('Réseau routier OSM (MagOSM)', magosm_success))
+            if magosm_layer:
+                if clip_to_commune and commune_layer:
+                    magosm_layer = self._clip_layer_to_commune(magosm_layer, commune_layer, clip_buffer_m)
+                loaded_layers.append(magosm_layer)
 
         if bdtopo_routesnom_checked:
             advance(f"Chargement BD TOPO Routes nommées ({code_insee})...")
@@ -2394,6 +2404,232 @@ class CheminsRuraux:
         layer.setLabeling(QgsVectorLayerSimpleLabeling(label_settings))
         layer.setLabelsEnabled(True)
         layer.triggerRepaint()
+
+    # ------------------------------------------------------------------
+    # MagOSM – Réseau routier OSM via WFS Magellium
+    # ------------------------------------------------------------------
+
+    MAGOSM_WFS_URL = "https://magosm.magellium.com/geoserver/ows"
+
+    def load_magosm_wfs(self, code_insee, bbox=None):
+        """Charge le réseau routier OSM depuis MagOSM (Magellium) via WFS paginé.
+
+        Utilise la couche magosm:highways_line du service WFS public de Magellium.
+        Le service est parfois lent — timeout par page : 180 s.
+
+        Args:
+            code_insee: Code INSEE de la commune (pour le nom de la couche)
+            bbox:       Emprise (xmin, ymin, xmax, ymax) en EPSG:4326
+
+        Returns:
+            tuple: (bool, QgsVectorLayer ou None)
+        """
+        from osgeo import gdal
+
+        typename   = "magosm:highways_line"
+        layer_name = f"MagOSM Routes {code_insee}"
+        crs        = "EPSG:4326"
+        page_size  = 500
+
+        if bbox is None:
+            QgsMessageLog.logMessage(
+                "MagOSM : BBOX requis pour charger la couche highways_line",
+                "CheminsRuraux", Qgis.Warning
+            )
+            return False, None
+
+        xmin, ymin, xmax, ymax = bbox
+        all_features = []
+        start_index  = 0
+        crs_ref      = None
+
+        while True:
+            params = {
+                'SERVICE':      'WFS',
+                'VERSION':      '2.0.0',
+                'REQUEST':      'GetFeature',
+                'TYPENAMES':    typename,
+                'SRSNAME':      crs,
+                'OUTPUTFORMAT': 'application/json',
+                'COUNT':        page_size,
+                'STARTINDEX':   start_index,
+                'BBOX':         f"{xmin},{ymin},{xmax},{ymax},{crs}",
+            }
+            url = f"{self.MAGOSM_WFS_URL}?{urllib.parse.urlencode(params)}"
+            QgsMessageLog.logMessage(
+                f"WFS MagOSM (startIndex={start_index}) : {url}",
+                "CheminsRuraux", Qgis.Info
+            )
+            try:
+                req = urllib.request.Request(url, headers={'User-Agent': 'QGIS-VoirieCommunale/1.0'})
+                with urllib.request.urlopen(req, timeout=180) as resp:
+                    fc = json.loads(resp.read().decode('utf-8'))
+            except Exception as exc:
+                QgsMessageLog.logMessage(
+                    f"✗ WFS MagOSM (startIndex={start_index}) : {exc}",
+                    "CheminsRuraux", Qgis.Critical
+                )
+                QMessageBox.warning(
+                    self.iface.mainWindow(),
+                    "MagOSM non disponible",
+                    "Impossible de télécharger le réseau routier OSM depuis MagOSM.\n\n"
+                    "Le service peut être temporairement indisponible ou lent.\n"
+                    "Consultez le journal des messages pour plus de détails."
+                )
+                return False, None
+
+            batch = fc.get('features', [])
+            if crs_ref is None:
+                crs_ref = fc.get('crs', None)
+            all_features.extend(batch)
+            QgsMessageLog.logMessage(
+                f"  page {start_index // page_size + 1} : {len(batch)} entité(s) reçue(s)",
+                "CheminsRuraux", Qgis.Info
+            )
+            if len(batch) < page_size:
+                break
+            start_index += page_size
+
+        if not all_features:
+            QgsMessageLog.logMessage(
+                f"✗ {layer_name} : aucune entité retournée par MagOSM",
+                "CheminsRuraux", Qgis.Warning
+            )
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Aucune donnée MagOSM",
+                "Aucun tronçon routier OSM n'a été retourné pour cette commune.\n\n"
+                "Vérifiez que la commune est bien couverte par MagOSM."
+            )
+            return False, None
+
+        assembled = {'type': 'FeatureCollection', 'features': all_features}
+        if crs_ref:
+            assembled['crs'] = crs_ref
+
+        vsimem_path = "/vsimem/magosm_highways_line.json"
+        gdal.FileFromMemBuffer(vsimem_path, json.dumps(assembled).encode('utf-8'))
+        layer = QgsVectorLayer(vsimem_path, layer_name, "ogr")
+
+        if not layer.isValid() or layer.featureCount() == 0:
+            gdal.Unlink(vsimem_path)
+            QgsMessageLog.logMessage(
+                f"✗ {layer_name} : couche invalide après assemblage",
+                "CheminsRuraux", Qgis.Warning
+            )
+            return False, None
+
+        self._remove_layers_by_name(layer_name)
+        QgsProject.instance().addMapLayer(layer)
+
+        _BAN_REGEX_CHEMIN_DEFAULT = r'(?i)(che(?:min)?|sen(?:tier)?) rural|\bC\.?R\.?\b'
+        _BAN_REGEX_VOIE_DEFAULT   = r'(?i)(voi(?:e)?) (com(?:munale)?)|\bV\.?C\.?\b'
+        regex_chemin = self._get_regex_setting('ban_regex_chemin', _BAN_REGEX_CHEMIN_DEFAULT)
+        regex_voie   = self._get_regex_setting('ban_regex_voie',   _BAN_REGEX_VOIE_DEFAULT)
+        self._apply_magosm_style(layer, regex_chemin=regex_chemin, regex_voie=regex_voie)
+
+        QgsMessageLog.logMessage(
+            f"✓ {layer_name} ({layer.featureCount()} entité(s), {len(all_features)} features "
+            f"en {start_index // page_size + 1} page(s))",
+            "CheminsRuraux", Qgis.Success
+        )
+        return True, layer
+
+    def _apply_magosm_style(self, layer,
+                             regex_chemin=r'(?i)(che(?:min)?|sen(?:tier)?) rural|\bC\.?R\.?\b',
+                             regex_voie=r'(?i)(voi(?:e)?) (com(?:munale)?)|\bV\.?C\.?\b'):
+        """Style à règles pour la couche MagOSM highways_line.
+
+        Même structure que BD TOPO tronçons :
+        1. Règles regex CR/VC sur le champ 'name' (prioritaires)
+        2. Catégorisation par valeur du champ 'highway' (à la place de 'nature')
+        """
+        from qgis.core import QgsRuleBasedRenderer, QgsLineSymbol
+
+        def make_line(color, width):
+            return QgsLineSymbol.createSimple({
+                'color': color, 'width': str(width),
+                'capstyle': 'round', 'joinstyle': 'round',
+            })
+
+        nom_field = 'name'
+        root_rule = QgsRuleBasedRenderer.Rule(None)
+
+        # ---- 1. Regex CR / VC (prioritaires) ----
+        rule_cr = QgsRuleBasedRenderer.Rule(make_line('#A0522D', 0.7))
+        rule_cr.setLabel('Chemin rural')
+        rule_cr.setFilterExpression(
+            f"regexp_match(\"{nom_field}\", '{self._qgis_expr_regex(regex_chemin)}') > 0"
+        )
+        root_rule.appendChild(rule_cr)
+
+        rule_vc = QgsRuleBasedRenderer.Rule(make_line('#4169E1', 0.7))
+        rule_vc.setLabel('Voie communale')
+        rule_vc.setFilterExpression(
+            f"regexp_match(\"{nom_field}\", '{self._qgis_expr_regex(regex_voie)}') > 0"
+        )
+        root_rule.appendChild(rule_vc)
+
+        # ---- 2. Catégorisation par champ 'highway' ----
+        highway_map = [
+            ('motorway',       '#CC0000', 1.4),
+            ('motorway_link',  '#DD4444', 0.8),
+            ('trunk',          '#FF6600', 1.2),
+            ('trunk_link',     '#FF8844', 0.8),
+            ('primary',        '#FF8800', 1.0),
+            ('primary_link',   '#FFAA44', 0.7),
+            ('secondary',      '#FFAA00', 0.8),
+            ('secondary_link', '#FFCC44', 0.6),
+            ('tertiary',       '#FFCC44', 0.7),
+            ('tertiary_link',  '#FFDD88', 0.5),
+            ('unclassified',   '#AAAAAA', 0.6),
+            ('residential',    '#CCCCCC', 0.5),
+            ('service',        '#DDDDDD', 0.4),
+            ('living_street',  '#EEEECC', 0.4),
+            ('track',          '#C8A46E', 0.5),
+            ('path',           '#DDBB88', 0.4),
+            ('footway',        '#888888', 0.3),
+            ('cycleway',       '#00AA00', 0.4),
+            ('bridleway',      '#996633', 0.4),
+            ('steps',          '#666666', 0.3),
+        ]
+        for highway_val, color, width in highway_map:
+            rule = QgsRuleBasedRenderer.Rule(make_line(color, width))
+            rule.setLabel(highway_val)
+            rule.setFilterExpression(f"\"highway\" = '{highway_val}'")
+            root_rule.appendChild(rule)
+
+        # Règle par défaut
+        rule_default = QgsRuleBasedRenderer.Rule(make_line('#AAAAAA', 0.4))
+        rule_default.setLabel('(autre)')
+        rule_default.setIsElse(True)
+        root_rule.appendChild(rule_default)
+
+        layer.setRenderer(QgsRuleBasedRenderer(root_rule))
+
+        # ---- Étiquettes : champ 'name' ----
+        lbl = QgsPalLayerSettings()
+        lbl.isExpression = False
+        lbl.fieldName = nom_field
+        lbl.enabled = True
+        lbl.placement = QgsPalLayerSettings.Line
+        fmt = QgsTextFormat()
+        fmt.setSize(8)
+        fmt.setColor(QColor(0, 0, 0))
+        buf = QgsTextBufferSettings()
+        buf.setEnabled(True)
+        buf.setSize(0.5)
+        buf.setColor(QColor(255, 255, 255))
+        fmt.setBuffer(buf)
+        lbl.setFormat(fmt)
+        layer.setLabeling(QgsVectorLayerSimpleLabeling(lbl))
+        layer.setLabelsEnabled(True)
+        layer.triggerRepaint()
+
+        QgsMessageLog.logMessage(
+            "Style différencié appliqué à la couche MagOSM (highway)",
+            "CheminsRuraux", Qgis.Success
+        )
 
     def run(self):
         """Ouvre la barre de lancement du plugin."""
