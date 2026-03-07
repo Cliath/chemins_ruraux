@@ -434,6 +434,7 @@ class CheminsRuraux:
         voirie_dep_checked = self.dlg.chkVoirieDep.isChecked()
         osm_routes_checked = self.dlg.chkOsmRoutes.isChecked()
         bdtopo_routesnom_checked = hasattr(self.dlg, 'chkBDTopoRoutesNom') and self.dlg.chkBDTopoRoutesNom.isChecked()
+        bdtopo_troncons_checked = hasattr(self.dlg, 'chkBDTopoTroncons') and self.dlg.chkBDTopoTroncons.isChecked()
         majic_checked = self.dlg.chkMajic.isChecked()
         scan_etat_major_checked = hasattr(self.dlg, 'chkScanEtatMajor') and self.dlg.chkScanEtatMajor.isChecked()
         scan_cassini_checked = hasattr(self.dlg, 'chkScanCassini') and self.dlg.chkScanCassini.isChecked()
@@ -447,11 +448,11 @@ class CheminsRuraux:
         plan_ign_checked = hasattr(self.dlg, 'chkPlanIGN') and self.dlg.chkPlanIGN.isChecked()
 
         # La commune est obligatoire dès qu'une donnée nécessite un filtre géométrique BBOX
-        needs_bbox = voirie_checked or voirie_dep_checked or osm_routes_checked or bdtopo_routesnom_checked
+        needs_bbox = voirie_checked or voirie_dep_checked or osm_routes_checked or bdtopo_routesnom_checked or bdtopo_troncons_checked
         if needs_bbox:
             commune_checked = True
         
-        if not cadastre_checked and not commune_checked and not ban_checked and not voirie_checked and not voirie_dep_checked and not osm_routes_checked and not bdtopo_routesnom_checked and not majic_checked and not scan_etat_major_checked and not scan_cassini_checked and not scan50_1950_checked and not waze_tiles_checked and not osmfr_checked and not cosia_checked and not photo_aeriennes_checked and not bd_ortho_checked and not mnt_lidar_checked and not plan_ign_checked:
+        if not cadastre_checked and not commune_checked and not ban_checked and not voirie_checked and not voirie_dep_checked and not osm_routes_checked and not bdtopo_routesnom_checked and not bdtopo_troncons_checked and not majic_checked and not scan_etat_major_checked and not scan_cassini_checked and not scan50_1950_checked and not waze_tiles_checked and not osmfr_checked and not cosia_checked and not photo_aeriennes_checked and not bd_ortho_checked and not mnt_lidar_checked and not plan_ign_checked:
             QMessageBox.warning(
                 self.iface.mainWindow(),
                 "Sélection requise",
@@ -479,7 +480,7 @@ class CheminsRuraux:
         steps = sum([
             cadastre_checked, commune_checked, ban_checked,
             voirie_checked, voirie_dep_checked, osm_routes_checked,
-            bdtopo_routesnom_checked, majic_checked,
+            bdtopo_routesnom_checked, bdtopo_troncons_checked, majic_checked,
             scan_etat_major_checked, scan_cassini_checked, scan50_1950_checked,
             waze_tiles_checked, osmfr_checked, cosia_checked, bd_ortho_checked, mnt_lidar_checked, plan_ign_checked
         ]) + len(photo_aeriennes_sources)
@@ -577,6 +578,13 @@ class CheminsRuraux:
             results.append(('BD TOPO Routes numérotées ou nommées', bdtopo_routesnom_success))
             if bdtopo_routesnom_layer:
                 loaded_layers.append(bdtopo_routesnom_layer)
+
+        if bdtopo_troncons_checked:
+            advance(f"Chargement BD TOPO Tronçons de route ({code_insee})...")
+            bdtopo_troncons_success, bdtopo_troncons_layer = self.load_bdtopo_troncons_wfs(code_insee, commune_bbox)
+            results.append(('BD TOPO Tronçons de route', bdtopo_troncons_success))
+            if bdtopo_troncons_layer:
+                loaded_layers.append(bdtopo_troncons_layer)
 
         if majic_checked:
             advance(f"Chargement des parcelles MAJIC ({code_insee})...")
@@ -725,6 +733,68 @@ class CheminsRuraux:
         # TOUJOURS ramener le dialogue au premier plan à la fin
         self.dlg.raise_()
         self.dlg.activateWindow()
+
+    def load_bdtopo_troncons_wfs(self, code_insee, bbox=None):
+        """Charge les tronçons de route BD TOPO V3 depuis la Géoplateforme IGN avec pagination.
+
+        Utilise _load_wfs_paginated avec filtre BBOX pour éviter de télécharger
+        tout le territoire national. Supporte la pagination pour les grandes communes.
+
+        Args:
+            code_insee: Code INSEE de la commune
+            bbox:       Emprise (xmin, ymin, xmax, ymax) en EPSG:4326
+
+        Returns:
+            tuple: (bool, QgsVectorLayer ou None)
+        """
+        layer_name = f"BD TOPO Tronçons de route {code_insee}"
+        success, layer = self._load_wfs_paginated(
+            typename="BDTOPO_V3:troncon_de_route",
+            layer_name=layer_name,
+            crs="EPSG:4326",
+            bbox=bbox,
+            style_callback=self._apply_bdtopo_troncons_style,
+        )
+
+        if not success:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "BD TOPO Tronçons de route non disponible",
+                f"Impossible de charger les tronçons de route BD TOPO pour le code INSEE {code_insee}.\n\n"
+                "Consultez le journal des messages pour plus de détails."
+            )
+        return success, layer
+
+    def _apply_bdtopo_troncons_style(self, layer):
+        """Applique un style catégorisé sur le champ 'nature' de la couche troncon_de_route."""
+        from qgis.core import QgsCategorizedSymbolRenderer, QgsRendererCategory, QgsSymbol
+
+        color_map = [
+            ('Type autoroutier',          '#CC0000', 1.4),
+            ('Route à 2 chaussées',        '#FF6600', 1.0),
+            ('Route à 1 chaussée',         '#FFAA00', 0.8),
+            ('Route empierrée',            '#996633', 0.6),
+            ('Chemin',                     '#C8A46E', 0.5),
+            ('Piste cyclable',             '#00AA00', 0.5),
+            ('Sentier',                    '#DDBB88', 0.4),
+            ('Bac ou liaison maritime',    '#0055CC', 0.5),
+            ('Bretelle',                   '#FF9999', 0.6),
+            ('Rond-point',                 '#FF9999', 0.6),
+        ]
+        categories = []
+        for nature, color, width in color_map:
+            symbol = QgsSymbol.defaultSymbol(layer.geometryType())
+            symbol.setColor(QColor(color))
+            symbol.setWidth(width)
+            categories.append(QgsRendererCategory(nature, symbol, nature))
+        # Catégorie par défaut (valeurs inconnues)
+        sym_default = QgsSymbol.defaultSymbol(layer.geometryType())
+        sym_default.setColor(QColor('#AAAAAA'))
+        sym_default.setWidth(0.4)
+        categories.append(QgsRendererCategory('', sym_default, '(autre)'))
+
+        layer.setRenderer(QgsCategorizedSymbolRenderer('nature', categories))
+        layer.triggerRepaint()
 
     def load_bdtopo_routesnom_wfs(self, code_insee, bbox=None):
         """Charge les routes numérotées ou nommées depuis le WFS BD TOPO IGN Géoplateforme.
@@ -1030,6 +1100,7 @@ class CheminsRuraux:
             )
             # Valeurs de repli (identiques au contenu initial du JSON)
             commune_group = [
+                "BD TOPO Tron\u00e7ons de route {code_insee}",
                 "BD TOPO Routes num\u00e9rot\u00e9es ou nomm\u00e9es {code_insee}",
                 "DGCL Voirie communale retenue DSR 2025 {code_insee}",
                 "DGCL Voirie d\u00e9partementale retenue DGF 2025 {code_insee}",
@@ -1340,21 +1411,24 @@ class CheminsRuraux:
         QgsMessageLog.logMessage(f"✓ {layer_name} ({layer.featureCount()} entité(s))", "CheminsRuraux", Qgis.Success)
         return True, layer
 
-    def _load_wfs_paginated(self, typename, layer_name, cql_filter,
-                             crs="EPSG:4326", page_size=1000, style_callback=None):
-        """Charge une couche WFS via pagination urllib + /vsimem/ (CQL_FILTER, COUNT + STARTINDEX).
+    def _load_wfs_paginated(self, typename, layer_name, cql_filter=None,
+                             crs="EPSG:4326", page_size=1000, style_callback=None,
+                             bbox=None):
+        """Charge une couche WFS via pagination urllib + /vsimem/ (CQL_FILTER et/ou BBOX, COUNT + STARTINDEX).
 
         Contourne la limite serveur de 1 000 entités par requête en bouclant sur STARTINDEX.
         Assemble toutes les pages en un seul GeoJSON FeatureCollection puis charge via OGR.
         Aucun fichier créé sur le disque.
 
         Args:
-            typename:      Nom complet du type WFS (ex. 'BAN.DATA.GOUV:ban')
-            layer_name:    Nom de la couche dans QGIS
-            cql_filter:    Filtre CQL à appliquer (ex. "code_insee='01234'")
-            crs:           Système de référence (défaut EPSG:4326)
-            page_size:     Nombre d'entités par page (défaut 1000, max IGN 10000)
+            typename:       Nom complet du type WFS (ex. 'BAN.DATA.GOUV:ban')
+            layer_name:     Nom de la couche dans QGIS
+            cql_filter:     Filtre CQL optionnel (ex. "code_insee='01234'")
+            crs:            Système de référence (défaut EPSG:4326)
+            page_size:      Nombre d'entités par page (défaut 1000, max IGN 10000)
             style_callback: Callable(layer) appliqué après chargement
+            bbox:           Emprise géographique optionnelle (xmin, ymin, xmax, ymax)
+                            exprimée dans le CRS fourni. Si présent, ajoute BBOX au filtre.
 
         Returns:
             tuple: (bool, QgsVectorLayer ou None)
@@ -1373,10 +1447,14 @@ class CheminsRuraux:
                 'TYPENAMES':    typename,
                 'SRSNAME':      crs,
                 'OUTPUTFORMAT': 'application/json',
-                'CQL_FILTER':   cql_filter,
                 'COUNT':        page_size,
                 'STARTINDEX':   start_index,
             }
+            if cql_filter:
+                params['CQL_FILTER'] = cql_filter
+            if bbox:
+                xmin, ymin, xmax, ymax = bbox
+                params['BBOX'] = f"{xmin},{ymin},{xmax},{ymax},{crs}"
             url = f"{self.WFS_IGN_URL}?{urllib.parse.urlencode(params)}"
             QgsMessageLog.logMessage(
                 f"WFS paginé {typename} (startIndex={start_index}) : {url}",

@@ -95,6 +95,16 @@
        </widget>
       </item>
       <item>
+       <widget class="QCheckBox" name="chkBDTopoTroncons">
+        <property name="text">
+         <string>Tronçons de route (BD TOPO® IGN)</string>
+        </property>
+        <property name="toolTip">
+         <string>Charge les tronçons de route (BDTOPO_V3:troncon_de_route) filtrés sur l'emprise de la commune, avec pagination&#10;Licence Ouverte 2.0 (Etalab) — © IGN</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QCheckBox" name="chkOsmRoutes">
         <property name="text">
         <string>Routes OSM (Overpass)</string>
