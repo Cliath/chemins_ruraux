@@ -89,18 +89,13 @@ set GH_EXE=
 where gh >nul 2>&1
 if !ERRORLEVEL! EQU 0 (
     set GH_EXE=gh
-) else (
-    for /f "delims=" %%H in ('powershell -NoProfile -Command "Get-ChildItem \"$env:LOCALAPPDATA\Programs\GitHub CLI\" -Recurse -Filter gh.exe -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName"') do set GH_EXE=%%H
 )
 if not defined GH_EXE (
     echo AVERTISSEMENT : GitHub CLI (gh) non trouve, GitHub Release ignoree
     goto :deploy
 )
-set PYTHONUTF8=1
-python get_commit_message.py > .release_notes.txt
-!GH_EXE! release delete v!VERSION! --yes >nul 2>&1
-!GH_EXE! release create v!VERSION! "releases\chemins_ruraux-!VERSION!.zip" --title "v!VERSION!" --notes-file .release_notes.txt
-del .release_notes.txt
+!GH_EXE! release delete v!VERSION! --yes 2>nul
+!GH_EXE! release create v!VERSION! "releases\chemins_ruraux-!VERSION!.zip" --title "Voirie Communale v!VERSION!" --generate-notes
 if !ERRORLEVEL! NEQ 0 (
     echo Erreur lors de la creation de la GitHub Release
 ) else (
