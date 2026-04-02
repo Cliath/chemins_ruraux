@@ -1,3 +1,7 @@
+# [0.13.9] - 2026-04-02
+### Corrigé
+- **Géofoncier public** : déplacé dans l'onglet "Plans à charger" → "Actuels" (c'est une couche WMS raster, pas une donnée vecteur).
+
 # [0.13.8] - 2026-04-02
 ### Ajouté
 - **Géofoncier public** : nouvelle case à cocher "Géofoncier public (RFU + Plans d'alignement)" dans l'onglet "Nationales". Charge en WMS dans un groupe dédié les couches `RFU_LIMITES`, `RFU_SOMMETS`, `PLANS_EMPRISES`, `PLANS_LIGNES`, `PLANS_LOCALISANTS` depuis le service Géofoncier (OGE, accès libre, EPSG:2154).
