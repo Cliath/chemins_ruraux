@@ -717,6 +717,7 @@ class VoirieCommunale:
             time.sleep(0.05)
 
         # ── Phase 3 : créer les couches sur le thread principal ───────────────
+        deferred_warnings = []  # messages à afficher après progress.close()
         for task in task_objects:
             spec = task._spec
             if task.success and task.vsimem_path:
@@ -730,17 +731,16 @@ class VoirieCommunale:
                     loaded_layers.append(layer)
             else:
                 results.append((spec['result_key'], False))
-                # Message spécifique pour OSM "aucune route"
-                if spec['result_key'] == 'Routes OSM' and task.error_msg == "Aucune route C/R trouvée":
-                    QMessageBox.warning(
-                        self.iface.mainWindow(), "Aucune route C/R",
-                        "Aucune route avec un 'ref' commençant par C ou R n'a été trouvée."
-                    )
-                elif task.error_msg:
+                if task.error_msg:
                     QgsMessageLog.logMessage(
                         f"✗ {spec['result_key']} : {task.error_msg}",
                         "VoirieCommunale", Qgis.Warning
                     )
+                    if spec['result_key'] == 'Routes OSM' and task.error_msg == "Aucune route C/R trouvée":
+                        deferred_warnings.append((
+                            "Aucune route C/R",
+                            "Aucune route avec un 'ref' commençant par C ou R n'a été trouvée."
+                        ))
 
         if majic_checked:
             advance(f"Chargement des parcelles MAJIC ({code_insee})...")
@@ -749,12 +749,11 @@ class VoirieCommunale:
             if majic_layer:
                 loaded_layers.append(majic_layer)
             elif not majic_success:
-                QMessageBox.warning(
-                    self.iface.mainWindow(),
+                deferred_warnings.append((
                     "Erreur MAJIC",
                     "Impossible de charger les parcelles MAJIC pour la commune sélectionnée.\n\n"
                     "Vérifiez la connexion internet, le code INSEE, ou consultez le journal des messages pour plus de détails."
-                )
+                ))
 
         if scan_etat_major_checked:
             advance(f"Chargement Carte d'État-Major ({code_insee})...")
@@ -833,6 +832,10 @@ class VoirieCommunale:
         # Fermer la boîte de progression
         progress.setValue(steps)
         progress.close()
+
+        # Afficher les avertissements différés (après fermeture de la progression)
+        for title, msg in deferred_warnings:
+            QMessageBox.warning(self.iface.mainWindow(), title, msg)
 
         # Récupérer le nom de la commune pour nommer le groupe
         commune_name = self._get_commune_name(code_insee, commune_layer)
