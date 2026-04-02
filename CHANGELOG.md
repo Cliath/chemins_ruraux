@@ -1,6 +1,7 @@
-# [0.14.8] - 2026-04-03
+# [0.14.9] - 2026-04-03
 ### Corrigé
 - **Pagination WFS** : la condition d'arrêt de pagination utilise désormais `numberMatched` / `numberReturned` fournis par WFS 2.0 quand disponibles. Évite une requête réseau superflue en fin de série. Fallback sur l'ancien comportement (`len(batch) < page_size`) si `numberMatched` est absent ou `"unknown"` (applicable aux 4 méthodes de pagination : `_fetch_wfs_paginated_to_vsimem`, `_fetch_magosm_to_vsimem`, et leurs équivalents synchrones).
+- **`bump_version.py`** : le remplacement du bloc `changelog=` dans `metadata.txt` passe désormais par une lambda dans `re.sub`, ce qui évite l'erreur `bad escape` lorsque le CHANGELOG contient des caractères spéciaux regex (ex. `\d`, `\b`).
 
 # [0.14.7] - 2026-04-03
 ### Corrigé
