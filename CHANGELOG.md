@@ -1,3 +1,47 @@
+# [0.14.8] - 2026-04-03
+### Corrigé
+- **Pagination WFS** : la condition d'arrêt de pagination utilise désormais `numberMatched` / `numberReturned` fournis par WFS 2.0 quand disponibles. Évite une requête réseau superflue en fin de série. Fallback sur l'ancien comportement (`len(batch) < page_size`) si `numberMatched` est absent ou `"unknown"` (applicable aux 4 méthodes de pagination : `_fetch_wfs_paginated_to_vsimem`, `_fetch_magosm_to_vsimem`, et leurs équivalents synchrones).
+
+# [0.14.7] - 2026-04-03
+### Corrigé
+- **Zoom** : lors du chargement d'un WMS global (Géofoncier, PLAN IGN, etc.) sur une commune absente du projet, la couche commune est désormais téléchargée silencieusement pour permettre le zoom. Si la commune est déjà présente, elle est réutilisée sans requête supplémentaire.
+
+# [0.14.6] - 2026-04-03
+### Corrigé
+- **Zoom** : suppression du `zoomToFullExtent()` de fallback qui dézoomait sur le monde entier quand aucune couche commune n'était disponible. La vue reste inchangée dans ce cas.
+
+# [0.14.5] - 2026-04-03
+### Corrigé
+- **Insertion dans les groupes** : tous les `addMapLayer(layer)` sans `False` convertis en `addMapLayer(layer, False)` + `layerTreeRoot().addLayer(layer)` pour bypasser le `QgsLayerTreeRegistryBridge`. Corrige le bug où les couches d'une nouvelle commune étaient insérées dans le groupe Géofoncier public après un réordonnancement.
+
+# [0.14.4] - 2026-04-03
+### Modifié
+- **Ordre canonique** : `Géofoncier public` déplacé en tête de `layer_order.json`, avant `__COMMUNE_GROUP__`, pour qu'il reste toujours au-dessus de tous les groupes communes.
+
+# [0.14.3] - 2026-04-03
+### Corrigé
+- **Ordre canonique multi-communes** : `_reorder_layers` détecte désormais tous les groupes communes présents (préfixe INSEE `^\d{5}`) et les repositionne ensemble. La commune courante se retrouve en tête, les précédentes en dessous, et les WMS globaux toujours sous tous les groupes communes.
+
+# [0.14.2] - 2026-04-03
+### Ajouté
+- **Skip WMS globaux déjà présents** : lors du chargement d'une nouvelle commune, les WMS et groupes globaux déjà dans le projet (Waze, OSM France, CoSIA, BD ORTHO, MNT LiDAR, PLAN IGN, Géofoncier, scans historiques, photos aériennes) ne sont plus rechargés. Ils sont réutilisés tels quels, sans requête réseau ni étape supplémentaire dans la barre de progression.
+### Ajouté
+- Méthodes utilitaires : `_layer_exists_by_name`, `_get_layers_by_name`, `_group_exists_by_name`, `_get_group_layers`.
+
+# [0.14.1] - 2026-04-02
+### Corrigé
+- **Progression** : les `QMessageBox` d'avertissement (OSM sans route C/R, MAJIC introuvable) sont désormais différés après `progress.close()` via une liste `deferred_warnings`. La barre de progression se ferme toujours proprement.
+
+# [0.14.0] - 2026-04-02
+### Ajouté
+- **Chargement WFS parallèle** : les 7 couches WFS (BAN, Voirie communale, Voirie départementale, OSM Routes, MagOSM, BD TOPO Routes nommées, BD TOPO Tronçons) sont désormais téléchargées simultanément via `QgsTask` + `QgsTaskManager`. La barre de progression avance au fil des completions grâce au signal `taskDone`.
+- Nouvelle classe `WfsLoadTask(QgsTask)` avec signal `taskDone(task)`.
+- Nouvelles méthodes background-safe : `_fetch_wfs_paginated_to_vsimem`, `_fetch_wfs_bbox_to_vsimem`, `_fetch_magosm_to_vsimem`, `_fetch_osm_roads_to_vsimem`, `_make_layer_from_vsimem`.
+### Ajouté
+- **`build.bat`** : vérification de la syntaxe Python (`ast.parse`) ajoutée en étape 0, avant le bump de version. Un échec de syntaxe annule le build sans incrémenter la version.
+### Modifié
+- `_apply_bdtopo_routesnom_style` extrait en méthode dédiée (était inline dans `load_bdtopo_routesnom_wfs`).
+
 # [0.13.10] - 2026-04-02
 ### Corrigé
 - **Ordre canonique** : `Géofoncier public` ajouté dans `layer_order.json` en tête des items racine (après le groupe commune).

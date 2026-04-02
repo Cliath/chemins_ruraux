@@ -2016,7 +2016,12 @@ class VoirieCommunale:
             if crs_ref is None:
                 crs_ref = fc.get('crs', None)
             all_features.extend(batch)
-            if len(batch) < page_size:
+            number_matched = fc.get('numberMatched')
+            number_returned = fc.get('numberReturned', len(batch))
+            total_collected = start_index + number_returned
+            if number_matched not in (None, 'unknown') and total_collected >= int(number_matched):
+                break
+            elif len(batch) < page_size:  # fallback si numberMatched absent ou inconnu
                 break
             start_index += page_size
         if not all_features:
@@ -2083,7 +2088,12 @@ class VoirieCommunale:
             if crs_ref is None:
                 crs_ref = fc.get('crs', None)
             all_features.extend(batch)
-            if len(batch) < page_size:
+            number_matched = fc.get('numberMatched')
+            number_returned = fc.get('numberReturned', len(batch))
+            total_collected = start_index + number_returned
+            if number_matched not in (None, 'unknown') and total_collected >= int(number_matched):
+                break
+            elif len(batch) < page_size:  # fallback si numberMatched absent ou inconnu
                 break
             start_index += page_size
         if not all_features:
@@ -2297,7 +2307,12 @@ class VoirieCommunale:
                 f"  page {start_index // page_size + 1} : {len(batch)} entité(s) reçue(s)",
                 "VoirieCommunale", Qgis.Info
             )
-            if len(batch) < page_size:
+            number_matched = fc.get('numberMatched')
+            number_returned = fc.get('numberReturned', len(batch))
+            total_collected = start_index + number_returned
+            if number_matched not in (None, 'unknown') and total_collected >= int(number_matched):
+                break
+            elif len(batch) < page_size:  # fallback si numberMatched absent ou inconnu
                 break
             start_index += page_size
 
@@ -3027,7 +3042,12 @@ class VoirieCommunale:
                 f"  page {start_index // page_size + 1} : {len(batch)} entité(s) reçue(s)",
                 "VoirieCommunale", Qgis.Info
             )
-            if len(batch) < page_size:
+            number_matched = fc.get('numberMatched')
+            number_returned = fc.get('numberReturned', len(batch))
+            total_collected = start_index + number_returned
+            if number_matched not in (None, 'unknown') and total_collected >= int(number_matched):
+                break
+            elif len(batch) < page_size:  # fallback si numberMatched absent ou inconnu
                 break
             start_index += page_size
 
