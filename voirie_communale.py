@@ -520,16 +520,36 @@ class VoirieCommunale:
                     commune_reuse = True
                     break
 
+        # Déterminer les couches WMS globales déjà présentes (skip = pas de rechargement)
+        skip_scan_etat_major = scan_etat_major_checked and self._layer_exists_by_name("Carte d'État-Major")
+        skip_scan_cassini    = scan_cassini_checked    and self._layer_exists_by_name("Carte de Cassini")
+        skip_scan50          = scan50_1950_checked     and self._layer_exists_by_name("SCAN 50\u00ae 1950")
+        skip_waze            = waze_tiles_checked      and self._layer_exists_by_name("Waze")
+        skip_osmfr           = osmfr_checked           and self._layer_exists_by_name("OSM France")
+        skip_cosia           = cosia_checked           and self._group_exists_by_name("CoSIA (Couverture du Sol par IA)")
+        skip_bdortho         = bd_ortho_checked        and self._layer_exists_by_name("BD ORTHO\u00ae 20 cm")
+        skip_mntlidar        = mnt_lidar_checked       and self._layer_exists_by_name("MNT LiDAR HD")
+        skip_planign         = plan_ign_checked        and self._layer_exists_by_name("PLAN IGN J+1")
+        skip_geofoncier      = geofoncier_checked      and self._group_exists_by_name("G\u00e9ofoncier public")
+
         # Compter le nombre d'étapes pour la barre de progression
         # La commune n'est pas comptée si elle est réutilisée (pas de téléchargement)
+        # Les WMS globaux déjà présents ne comptent pas non plus
         steps = sum([
             cadastre_checked, commune_checked and not commune_reuse, ban_checked,
             voirie_checked, voirie_dep_checked, osm_routes_checked, magosm_checked,
             bdtopo_routesnom_checked, bdtopo_troncons_checked, majic_checked,
-            scan_etat_major_checked, scan_cassini_checked, scan50_1950_checked,
-            waze_tiles_checked, osmfr_checked, cosia_checked, bd_ortho_checked, mnt_lidar_checked, plan_ign_checked,
-            geofoncier_checked
-        ]) + len(photo_aeriennes_sources)
+            scan_etat_major_checked and not skip_scan_etat_major,
+            scan_cassini_checked    and not skip_scan_cassini,
+            scan50_1950_checked     and not skip_scan50,
+            waze_tiles_checked      and not skip_waze,
+            osmfr_checked           and not skip_osmfr,
+            cosia_checked           and not skip_cosia,
+            bd_ortho_checked        and not skip_bdortho,
+            mnt_lidar_checked       and not skip_mntlidar,
+            plan_ign_checked        and not skip_planign,
+            geofoncier_checked      and not skip_geofoncier,
+        ]) + sum(1 for _, dn in photo_aeriennes_sources if not self._layer_exists_by_name(dn))
 
         progress = QProgressDialog(
             "Chargement des données en cours...",
@@ -756,78 +776,120 @@ class VoirieCommunale:
                 ))
 
         if scan_etat_major_checked:
-            advance(f"Chargement Carte d'État-Major ({code_insee})...")
-            em_success, em_layers = self.load_scan_historique_wms('GEOGRAPHICALGRIDSYSTEMS.ETATMAJOR40', f"Carte d'État-Major")
-            results.append(("Carte d'État-Major", em_success))
-            loaded_layers.extend(em_layers)
+            if skip_scan_etat_major:
+                results.append(("Carte d'État-Major", True))
+                loaded_layers.extend(self._get_layers_by_name("Carte d'État-Major"))
+            else:
+                advance("Chargement Carte d'État-Major...")
+                em_success, em_layers = self.load_scan_historique_wms('GEOGRAPHICALGRIDSYSTEMS.ETATMAJOR40', "Carte d'État-Major")
+                results.append(("Carte d'État-Major", em_success))
+                loaded_layers.extend(em_layers)
 
         if scan_cassini_checked:
-            advance(f"Chargement Carte de Cassini ({code_insee})...")
-            cassini_success, cassini_layers = self.load_scan_historique_wms('GEOGRAPHICALGRIDSYSTEMS.CASSINI', 'Carte de Cassini')
-            results.append(('Carte de Cassini', cassini_success))
-            loaded_layers.extend(cassini_layers)
+            if skip_scan_cassini:
+                results.append(('Carte de Cassini', True))
+                loaded_layers.extend(self._get_layers_by_name('Carte de Cassini'))
+            else:
+                advance("Chargement Carte de Cassini...")
+                cassini_success, cassini_layers = self.load_scan_historique_wms('GEOGRAPHICALGRIDSYSTEMS.CASSINI', 'Carte de Cassini')
+                results.append(('Carte de Cassini', cassini_success))
+                loaded_layers.extend(cassini_layers)
 
         if scan50_1950_checked:
-            advance(f"Chargement SCAN 50\u00ae 1950 ({code_insee})...")
-            scan50_success, scan50_layers = self.load_scan_historique_wms('GEOGRAPHICALGRIDSYSTEMS.MAPS.SCAN50.1950', 'SCAN 50\u00ae 1950')
-            results.append(('SCAN 50\u00ae 1950', scan50_success))
-            loaded_layers.extend(scan50_layers)
+            if skip_scan50:
+                results.append(('SCAN 50\u00ae 1950', True))
+                loaded_layers.extend(self._get_layers_by_name('SCAN 50\u00ae 1950'))
+            else:
+                advance("Chargement SCAN 50\u00ae 1950...")
+                scan50_success, scan50_layers = self.load_scan_historique_wms('GEOGRAPHICALGRIDSYSTEMS.MAPS.SCAN50.1950', 'SCAN 50\u00ae 1950')
+                results.append(('SCAN 50\u00ae 1950', scan50_success))
+                loaded_layers.extend(scan50_layers)
 
         if waze_tiles_checked:
-            advance("Chargement Waze...")
-            waze_success, waze_layers = self.load_xyz_tile_layer(
-                'https://www.waze.com/row-tiles/editor/roads/{z}/{x}/{y}/tile.png',
-                'Waze',
-                zmin=0, zmax=19
-            )
-            results.append(('Waze', waze_success))
-            loaded_layers.extend(waze_layers)
+            if skip_waze:
+                results.append(('Waze', True))
+                loaded_layers.extend(self._get_layers_by_name('Waze'))
+            else:
+                advance("Chargement Waze...")
+                waze_success, waze_layers = self.load_xyz_tile_layer(
+                    'https://www.waze.com/row-tiles/editor/roads/{z}/{x}/{y}/tile.png',
+                    'Waze', zmin=0, zmax=19
+                )
+                results.append(('Waze', waze_success))
+                loaded_layers.extend(waze_layers)
 
         if osmfr_checked:
-            advance("Chargement OSM France...")
-            osmfr_success, osmfr_layers = self.load_xyz_tile_layer(
-                'https://a.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',
-                'OSM France',
-                zmin=0, zmax=20
-            )
-            results.append(('OSM France', osmfr_success))
-            loaded_layers.extend(osmfr_layers)
+            if skip_osmfr:
+                results.append(('OSM France', True))
+                loaded_layers.extend(self._get_layers_by_name('OSM France'))
+            else:
+                advance("Chargement OSM France...")
+                osmfr_success, osmfr_layers = self.load_xyz_tile_layer(
+                    'https://a.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',
+                    'OSM France', zmin=0, zmax=20
+                )
+                results.append(('OSM France', osmfr_success))
+                loaded_layers.extend(osmfr_layers)
 
         if cosia_checked:
-            advance("Chargement CoSIA (Couverture du Sol par IA)...")
-            cosia_success, cosia_layers = self.load_cosia_wms()
-            results.append(('CoSIA', cosia_success))
-            loaded_layers.extend(cosia_layers)
+            if skip_cosia:
+                results.append(('CoSIA', True))
+                loaded_layers.extend(self._get_group_layers('CoSIA (Couverture du Sol par IA)'))
+            else:
+                advance("Chargement CoSIA (Couverture du Sol par IA)...")
+                cosia_success, cosia_layers = self.load_cosia_wms()
+                results.append(('CoSIA', cosia_success))
+                loaded_layers.extend(cosia_layers)
 
         if bd_ortho_checked:
-            advance("Chargement BD ORTHO\u00ae 20 cm...")
-            bdortho_success, bdortho_layers = self._load_wms_layer('HR.ORTHOIMAGERY.ORTHOPHOTOS', 'BD ORTHO\u00ae 20 cm', 'EPSG:2154')
-            results.append(('BD ORTHO\u00ae 20 cm', bdortho_success))
-            loaded_layers.extend(bdortho_layers)
+            if skip_bdortho:
+                results.append(('BD ORTHO\u00ae 20 cm', True))
+                loaded_layers.extend(self._get_layers_by_name('BD ORTHO\u00ae 20 cm'))
+            else:
+                advance("Chargement BD ORTHO\u00ae 20 cm...")
+                bdortho_success, bdortho_layers = self._load_wms_layer('HR.ORTHOIMAGERY.ORTHOPHOTOS', 'BD ORTHO\u00ae 20 cm', 'EPSG:2154')
+                results.append(('BD ORTHO\u00ae 20 cm', bdortho_success))
+                loaded_layers.extend(bdortho_layers)
 
         if mnt_lidar_checked:
-            advance("Chargement MNT LiDAR HD...")
-            mntlidar_success, mntlidar_layers = self._load_wms_layer('IGNF_LIDAR-HD_MNT_ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW', 'MNT LiDAR HD', 'EPSG:4326')
-            results.append(('MNT LiDAR HD', mntlidar_success))
-            loaded_layers.extend(mntlidar_layers)
+            if skip_mntlidar:
+                results.append(('MNT LiDAR HD', True))
+                loaded_layers.extend(self._get_layers_by_name('MNT LiDAR HD'))
+            else:
+                advance("Chargement MNT LiDAR HD...")
+                mntlidar_success, mntlidar_layers = self._load_wms_layer('IGNF_LIDAR-HD_MNT_ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW', 'MNT LiDAR HD', 'EPSG:4326')
+                results.append(('MNT LiDAR HD', mntlidar_success))
+                loaded_layers.extend(mntlidar_layers)
 
         if plan_ign_checked:
-            advance("Chargement PLAN IGN J+1...")
-            planign_success, planign_layers = self._load_wms_layer('GEOGRAPHICALGRIDSYSTEMS.MAPS.BDUNI.J1', 'PLAN IGN J+1', 'EPSG:3857')
-            results.append(('PLAN IGN J+1', planign_success))
-            loaded_layers.extend(planign_layers)
+            if skip_planign:
+                results.append(('PLAN IGN J+1', True))
+                loaded_layers.extend(self._get_layers_by_name('PLAN IGN J+1'))
+            else:
+                advance("Chargement PLAN IGN J+1...")
+                planign_success, planign_layers = self._load_wms_layer('GEOGRAPHICALGRIDSYSTEMS.MAPS.BDUNI.J1', 'PLAN IGN J+1', 'EPSG:3857')
+                results.append(('PLAN IGN J+1', planign_success))
+                loaded_layers.extend(planign_layers)
 
         if geofoncier_checked:
-            advance("Chargement Géofoncier public...")
-            geofoncier_success, geofoncier_layers = self.load_geofoncier_wms()
-            results.append(('Géofoncier public', geofoncier_success))
-            loaded_layers.extend(geofoncier_layers)
+            if skip_geofoncier:
+                results.append(('G\u00e9ofoncier public', True))
+                loaded_layers.extend(self._get_group_layers('G\u00e9ofoncier public'))
+            else:
+                advance("Chargement G\u00e9ofoncier public...")
+                geofoncier_success, geofoncier_layers = self.load_geofoncier_wms()
+                results.append(('G\u00e9ofoncier public', geofoncier_success))
+                loaded_layers.extend(geofoncier_layers)
 
         for typename, display_name in photo_aeriennes_sources:
-            advance(f"Chargement {display_name}...")
-            ph_success, ph_layers = self.load_scan_historique_wms(typename, display_name)
-            results.append((display_name, ph_success))
-            loaded_layers.extend(ph_layers)
+            if self._layer_exists_by_name(display_name):
+                results.append((display_name, True))
+                loaded_layers.extend(self._get_layers_by_name(display_name))
+            else:
+                advance(f"Chargement {display_name}...")
+                ph_success, ph_layers = self.load_scan_historique_wms(typename, display_name)
+                results.append((display_name, ph_success))
+                loaded_layers.extend(ph_layers)
 
         # Fermer la boîte de progression
         progress.setValue(steps)
@@ -1598,6 +1660,26 @@ class VoirieCommunale:
             "VoirieCommunale",
             Qgis.Info
         )
+
+    def _layer_exists_by_name(self, name):
+        """Retourne True si une couche portant ce nom exact existe dans le projet."""
+        return any(lyr.name() == name for lyr in QgsProject.instance().mapLayers().values())
+
+    def _get_layers_by_name(self, name):
+        """Retourne la liste des couches du projet portant ce nom exact."""
+        return [lyr for lyr in QgsProject.instance().mapLayers().values() if lyr.name() == name]
+
+    def _group_exists_by_name(self, name):
+        """Retourne True si un groupe portant ce nom existe dans l'arbre des couches."""
+        return QgsProject.instance().layerTreeRoot().findGroup(name) is not None
+
+    def _get_group_layers(self, group_name):
+        """Retourne les couches d'un groupe existant."""
+        root = QgsProject.instance().layerTreeRoot()
+        group = root.findGroup(group_name)
+        if group:
+            return [child.layer() for child in group.findLayers() if child.layer()]
+        return []
 
     def _remove_layers_by_name(self, layer_name):
         """Supprime toutes les couches du projet portant ce nom exact."""
