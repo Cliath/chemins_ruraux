@@ -1608,55 +1608,61 @@ class VoirieCommunale:
         """Réordonne les couches chargées dans le panneau selon un ordre canonique.
 
         Ordre canonique (du haut vers le bas) :
-        couches vecteur spécifiques → groupe commune → fonds raster → rasters historiques.
-        Le groupe commune (dont le nom commence par code_insee suivi de ' - ' ou fin) est
-        détecté dynamiquement par préfixe.
+        groupes communes (courant en tête) → fonds raster → rasters historiques.
+        Tous les groupes communes présents dans le projet (détectés par préfixe INSEE)
+        sont repositionnés ensemble au-dessus des WMS globaux.
 
         Algorithme : insert-at-0 en ordre inversé — déplace chaque item connu en tête
         de liste, un par un. Les items inconnus ne sont pas touchés (restent en place).
         """
-        root = QgsProject.instance().layerTreeRoot()
+        import re as _re
+        _INSEE_RE = _re.compile(r'^\d{5}')
 
-        # Sentinel pour le groupe commune (nom dynamique ex: "75056 - Paris")
-        _COMMUNE_GROUP_SENTINEL = f"__COMMUNE_GROUP_{code_insee}__"
+        root = QgsProject.instance().layerTreeRoot()
 
         # Ordre chargé depuis layer_order.json (root = items à la racine)
         _, root_order_templates = self._load_canonical_order()
-        # Remplacer le sentinel générique par le sentinel spécifique au code_insee
-        canonical_order = [
-            _COMMUNE_GROUP_SENTINEL if name == "__COMMUNE_GROUP__" else name
-            for name in root_order_templates
-        ]
 
-        # Traitement en ordre inversé : chaque item connu est cloné et inséré en position 0.
-        # Après la boucle, le dernier traité (index 0 canonique) se retrouve en tête.
-        # Les items inconnus ne sont jamais touchés, ils restent à leur place courante.
-        for name in reversed(canonical_order):
-            target = None
-            for child in root.children():
-                if isinstance(child, QgsLayerTreeGroup):
-                    if name == _COMMUNE_GROUP_SENTINEL:
-                        # Groupe commune : détecté par préfixe code_insee
-                        cname = child.name()
-                        if cname == code_insee or cname.startswith(code_insee + ' - '):
+        for name in reversed(root_order_templates):
+            if name == "__COMMUNE_GROUP__":
+                # Traiter TOUS les groupes communes (préfixe 5 chiffres INSEE)
+                # dans leur ordre actuel dans l'arbre (du haut vers le bas)
+                commune_groups = [
+                    child for child in root.children()
+                    if isinstance(child, QgsLayerTreeGroup) and _INSEE_RE.match(child.name())
+                ]
+                if not commune_groups:
+                    continue
+                # Séparer la commune courante des autres
+                current = [g for g in commune_groups
+                           if g.name() == code_insee or g.name().startswith(code_insee + ' - ')]
+                others   = [g for g in commune_groups if g not in current]
+                # Ordre d'insertion à la position 0 :
+                # reversed(others) en premier → current en dernier
+                # → après la boucle : current en tête, others dans leur ordre original
+                for group in list(reversed(others)) + current:
+                    clone = group.clone()
+                    root.insertChildNode(0, clone)
+                    root.removeChildNode(group)
+            else:
+                target = None
+                for child in root.children():
+                    if isinstance(child, QgsLayerTreeGroup) and child.name() == name:
+                        target = child
+                        break
+                    elif isinstance(child, QgsLayerTreeLayer):
+                        layer = child.layer()
+                        if layer and layer.name() == name:
                             target = child
                             break
-                    elif child.name() == name:
-                        target = child
-                        break
-                elif isinstance(child, QgsLayerTreeLayer):
-                    layer = child.layer()
-                    if layer and layer.name() == name:
-                        target = child
-                        break
-            if target is None:
-                continue
-            clone = target.clone()
-            root.insertChildNode(0, clone)
-            root.removeChildNode(target)
+                if target is None:
+                    continue
+                clone = target.clone()
+                root.insertChildNode(0, clone)
+                root.removeChildNode(target)
 
         QgsMessageLog.logMessage(
-            f"Couches r\u00e9ordonn\u00e9es selon l\u2019ordre canonique pour {code_insee}",
+            f"Couches réordonnées selon l'ordre canonique pour {code_insee}",
             "VoirieCommunale",
             Qgis.Info
         )
