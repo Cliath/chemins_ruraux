@@ -1,3 +1,7 @@
+# [0.13.8] - 2026-04-02
+### Ajouté
+- **Géofoncier public** : nouvelle case à cocher "Géofoncier public (RFU + Plans d'alignement)" dans l'onglet "Nationales". Charge en WMS dans un groupe dédié les couches `RFU_LIMITES`, `RFU_SOMMETS`, `PLANS_EMPRISES`, `PLANS_LIGNES`, `PLANS_LOCALISANTS` depuis le service Géofoncier (OGE, accès libre, EPSG:2154).
+
 # [0.13.7] - 2026-03-07
 ### Corrigé
 - **Journal des messages QGIS** : toutes les entrées `logMessage` utilisaient deux tags distincts (`"VoirieCommunale"` et `"VoirieCommunale"`). Uniformisation sur `"VoirieCommunale"` (53 occurrences corrigées).

@@ -181,6 +181,16 @@
            </widget>
           </item>
           <item>
+           <widget class="QCheckBox" name="chkGeofoncier">
+            <property name="text">
+             <string>Géofoncier public (RFU + Plans d'alignement)</string>
+            </property>
+            <property name="toolTip">
+             <string>Charge en WMS dans un groupe : RFU Limites, RFU Sommets, Plans d'alignement (Emprises, Lignes, Localisants)&#10;Service : Géofoncier (OGE) — accès libre</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <spacer name="spacerNationales">
             <property name="orientation"><enum>Qt::Vertical</enum></property>
             <property name="sizeHint" stdset="0"><size><width>0</width><height>0</height></size></property>

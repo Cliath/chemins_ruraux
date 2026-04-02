@@ -447,13 +447,14 @@ class VoirieCommunale:
         bd_ortho_checked = hasattr(self.dlg, 'chkBDOrtho') and self.dlg.chkBDOrtho.isChecked()
         mnt_lidar_checked = hasattr(self.dlg, 'chkMNTLidar') and self.dlg.chkMNTLidar.isChecked()
         plan_ign_checked = hasattr(self.dlg, 'chkPlanIGN') and self.dlg.chkPlanIGN.isChecked()
+        geofoncier_checked = hasattr(self.dlg, 'chkGeofoncier') and self.dlg.chkGeofoncier.isChecked()
 
         # La commune est obligatoire dès qu'une donnée nécessite un filtre géométrique BBOX
         needs_bbox = voirie_checked or voirie_dep_checked or osm_routes_checked or bdtopo_routesnom_checked or bdtopo_troncons_checked or magosm_checked
         if needs_bbox:
             commune_checked = True
         
-        if not cadastre_checked and not commune_checked and not ban_checked and not voirie_checked and not voirie_dep_checked and not osm_routes_checked and not magosm_checked and not bdtopo_routesnom_checked and not bdtopo_troncons_checked and not majic_checked and not scan_etat_major_checked and not scan_cassini_checked and not scan50_1950_checked and not waze_tiles_checked and not osmfr_checked and not cosia_checked and not photo_aeriennes_checked and not bd_ortho_checked and not mnt_lidar_checked and not plan_ign_checked:
+        if not cadastre_checked and not commune_checked and not ban_checked and not voirie_checked and not voirie_dep_checked and not osm_routes_checked and not magosm_checked and not bdtopo_routesnom_checked and not bdtopo_troncons_checked and not majic_checked and not scan_etat_major_checked and not scan_cassini_checked and not scan50_1950_checked and not waze_tiles_checked and not osmfr_checked and not cosia_checked and not photo_aeriennes_checked and not bd_ortho_checked and not mnt_lidar_checked and not plan_ign_checked and not geofoncier_checked:
             QMessageBox.warning(
                 self.iface.mainWindow(),
                 "Sélection requise",
@@ -495,7 +496,8 @@ class VoirieCommunale:
             voirie_checked, voirie_dep_checked, osm_routes_checked, magosm_checked,
             bdtopo_routesnom_checked, bdtopo_troncons_checked, majic_checked,
             scan_etat_major_checked, scan_cassini_checked, scan50_1950_checked,
-            waze_tiles_checked, osmfr_checked, cosia_checked, bd_ortho_checked, mnt_lidar_checked, plan_ign_checked
+            waze_tiles_checked, osmfr_checked, cosia_checked, bd_ortho_checked, mnt_lidar_checked, plan_ign_checked,
+            geofoncier_checked
         ]) + len(photo_aeriennes_sources)
 
         progress = QProgressDialog(
@@ -699,6 +701,12 @@ class VoirieCommunale:
             planign_success, planign_layers = self._load_wms_layer('GEOGRAPHICALGRIDSYSTEMS.MAPS.BDUNI.J1', 'PLAN IGN J+1', 'EPSG:3857')
             results.append(('PLAN IGN J+1', planign_success))
             loaded_layers.extend(planign_layers)
+
+        if geofoncier_checked:
+            advance("Chargement Géofoncier public...")
+            geofoncier_success, geofoncier_layers = self.load_geofoncier_wms()
+            results.append(('Géofoncier public', geofoncier_success))
+            loaded_layers.extend(geofoncier_layers)
 
         for typename, display_name in photo_aeriennes_sources:
             advance(f"Chargement {display_name}...")
@@ -1220,6 +1228,63 @@ class VoirieCommunale:
                 f"Aucune couche cadastrale n'a pu être chargée.\n\n"
                 f"Code INSEE : {code_insee}\nURL : {wms_url}\n\n"
                 "Vérifiez le code INSEE, la connexion internet et le journal des messages."
+            )
+            return False, []
+
+    def load_geofoncier_wms(self):
+        """Charge les couches Géofoncier public (RFU + Plans d'alignement) dans un groupe dédié.
+
+        Returns:
+            tuple: (bool, list) - (succès, liste des couches chargées)
+        """
+        WMS_URL = "https://api2.geofoncier.fr/api/referentielsoge/wxs?"
+        CRS = "EPSG:2154"
+        FORMAT = "image/png"
+
+        layers_to_load = [
+            ('RFU_LIMITES',        'RFU - Limites'),
+            ('RFU_SOMMETS',        'RFU - Sommets'),
+            ('PLANS_EMPRISES',     "Plans d'alignement - Emprises"),
+            ('PLANS_LIGNES',       "Plans d'alignement - Limites"),
+            ('PLANS_LOCALISANTS',  "Plans d'alignement - Localisants"),
+        ]
+
+        root = QgsProject.instance().layerTreeRoot()
+        group_name = "Géofoncier public"
+        self._remove_group_by_name(group_name)
+        group = root.addGroup(group_name)
+
+        created_layers = []
+        errors = []
+
+        for layer_id, layer_title in layers_to_load:
+            uri = f"crs={CRS}&format={FORMAT}&layers={layer_id}&styles&url={WMS_URL}"
+            wms_layer = QgsRasterLayer(uri, layer_title, 'wms')
+            if wms_layer.isValid():
+                QgsProject.instance().addMapLayer(wms_layer, False)
+                group.addLayer(wms_layer)
+                created_layers.append(wms_layer)
+            else:
+                errors.append(layer_title)
+                QgsMessageLog.logMessage(
+                    f"Géofoncier : échec chargement {layer_title} — {wms_layer.error().message()}",
+                    "VoirieCommunale", Qgis.Warning
+                )
+
+        if created_layers:
+            if errors:
+                QMessageBox.warning(
+                    self.iface.mainWindow(),
+                    "Géofoncier partiellement chargé",
+                    f"Couches en erreur : {', '.join(errors)}"
+                )
+            return True, created_layers
+        else:
+            QMessageBox.critical(
+                self.iface.mainWindow(),
+                "Erreur Géofoncier",
+                "Aucune couche Géofoncier n'a pu être chargée.\n\n"
+                "Vérifiez votre connexion internet."
             )
             return False, []
 
