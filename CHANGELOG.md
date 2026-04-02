@@ -1,3 +1,7 @@
+# [0.13.10] - 2026-04-02
+### Corrigé
+- **Ordre canonique** : `Géofoncier public` ajouté dans `layer_order.json` en tête des items racine (après le groupe commune).
+
 # [0.13.9] - 2026-04-02
 ### Corrigé
 - **Géofoncier public** : déplacé dans l'onglet "Plans à charger" → "Actuels" (c'est une couche WMS raster, pas une donnée vecteur).
