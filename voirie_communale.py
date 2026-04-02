@@ -934,9 +934,6 @@ class VoirieCommunale:
             if zoom_extent and not zoom_extent.isEmpty():
                 canvas.setExtent(zoom_extent)
                 canvas.refresh()
-            else:
-                canvas.zoomToFullExtent()
-                canvas.refresh()
 
         # Message récapitulatif de fin de chargement
         if len(results) >= 1:

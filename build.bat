@@ -16,6 +16,15 @@ echo  Compilation et packaging du plugin
 echo ========================================
 echo.
 
+REM Etape 0 : Verification syntaxe Python
+echo [0/4] Verification de la syntaxe Python...
+python -c "import ast, sys; ast.parse(open('voirie_communale.py', encoding='utf-8-sig').read()); print('  Syntaxe OK')"
+if !ERRORLEVEL! NEQ 0 (
+    echo Erreur de syntaxe Python - build annule
+    exit /b 1
+)
+echo.
+
 REM Etape 1 : Increment de version
 echo [1/4] Increment de version (!BUMP!)...
 for /f "delims=" %%v in ('python bump_version.py !BUMP!') do set VERSION=%%v
