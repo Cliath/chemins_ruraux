@@ -484,6 +484,22 @@ class VoirieCommunale:
         needs_bbox = voirie_checked or voirie_dep_checked or osm_routes_checked or bdtopo_routesnom_checked or bdtopo_troncons_checked or magosm_checked
         if needs_bbox:
             commune_checked = True
+
+        # Pour les données sans BBOX (WMS globaux, cadastre, BAN, MAJIC), forcer le
+        # chargement de la commune pour le zoom uniquement si elle n'est pas déjà dans le projet
+        needs_zoom = (cadastre_checked or ban_checked or majic_checked or
+                      scan_etat_major_checked or scan_cassini_checked or scan50_1950_checked or
+                      waze_tiles_checked or osmfr_checked or cosia_checked or
+                      bd_ortho_checked or mnt_lidar_checked or plan_ign_checked or
+                      geofoncier_checked or photo_aeriennes_checked)
+        if needs_zoom and not needs_bbox:
+            commune_layer_name = f"Commune {code_insee}"
+            commune_already_loaded = any(
+                lyr.name() == commune_layer_name
+                for lyr in QgsProject.instance().mapLayers().values()
+            )
+            if not commune_already_loaded:
+                commune_checked = True
         
         if not cadastre_checked and not commune_checked and not ban_checked and not voirie_checked and not voirie_dep_checked and not osm_routes_checked and not magosm_checked and not bdtopo_routesnom_checked and not bdtopo_troncons_checked and not majic_checked and not scan_etat_major_checked and not scan_cassini_checked and not scan50_1950_checked and not waze_tiles_checked and not osmfr_checked and not cosia_checked and not photo_aeriennes_checked and not bd_ortho_checked and not mnt_lidar_checked and not plan_ign_checked and not geofoncier_checked:
             QMessageBox.warning(
