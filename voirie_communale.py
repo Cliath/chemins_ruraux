@@ -1183,50 +1183,50 @@ class VoirieCommunale:
         root_rule.appendChild(rule_vc)
 
         # ---- 2. cpx_classement_administratif ----
+        cpx_null = "(\"cpx_classement_administratif\" IS NULL OR \"cpx_classement_administratif\" = '')"
         cpx_map = [
-            ('Autoroute',            '#F2A824', 1.4),
-            ('Nationale',            '#F2D7A2', 1.2),
-            ('Départementale',       '#FCF5AF', 0.9),
-            ('Route intercommunale', '#FCF0A8', 0.8),
-            ('Voie communale',       '#FCF6B5', 0.7),
-            ('Chemin rural',         '#8C7274', 0.6),
+            ('Autoroute',            ["Autoroute"],                                   '#F2A824', 1.4),
+            ('Nationale',            ["Nationale"],                                   '#F2D7A2', 1.2),
+            ('Départementale',       ["Départementale"],                              '#FCF5AF', 0.9),
+            ('Route intercommunale', ["Route intercommunale"],                        '#FCF0A8', 0.8),
+            ('Voie communale',       ["Voie communale"],                              '#FCF6B5', 0.7),
+            ('Chemin rural',         ["Chemin rural"],                                '#8C7274', 0.6),
         ]
-        for cpx_val, color, width in cpx_map:
+        for label, vals, color, width in cpx_map:
+            expr = ' OR '.join(f"\"cpx_classement_administratif\" = '{v}'" for v in vals)
             rule = QgsRuleBasedRenderer.Rule(make_line(color, width))
-            rule.setLabel(cpx_val)
-            rule.setFilterExpression(f"\"cpx_classement_administratif\" = '{cpx_val}'")
+            rule.setLabel(label)
+            rule.setFilterExpression(expr)
             root_rule.appendChild(rule)
 
         # ---- 3. Importance (fallback si cpx_classement non renseigné) ----
-        cpx_null = "(\"cpx_classement_administratif\" IS NULL OR \"cpx_classement_administratif\" = '')"
+        imp_fallback_base = f"{cpx_null}"
         importance_map = [
-            (1, 'Autoroute (importance)',      '#F2A824', 1.4),
-            (2, 'Nationale (importance)',       '#F2D7A2', 1.2),
-            (3, 'Départementale (importance)',  '#FCF5AF', 0.9),
-            (4, 'Départementale (importance)',  '#FCF5AF', 0.9),
+            ('Autoroute',      '"importance" = 1',          '#F2A824', 1.4),
+            ('Nationale',      '"importance" = 2',          '#F2D7A2', 1.2),
+            ('Départementale', '"importance" IN (3, 4)',    '#FCF5AF', 0.9),
         ]
-        for imp_val, label, color, width in importance_map:
+        for label, imp_expr, color, width in importance_map:
             rule = QgsRuleBasedRenderer.Rule(make_line(color, width))
             rule.setLabel(label)
-            rule.setFilterExpression(f"\"importance\" = {imp_val} AND {cpx_null}")
+            rule.setFilterExpression(f"{imp_expr} AND {imp_fallback_base}")
             root_rule.appendChild(rule)
 
         # ---- 4. Nature (fallback si importance ≥ 5 ou non renseignée) ----
         imp_fallback = f"({cpx_null} AND (\"importance\" IS NULL OR \"importance\" >= 5))"
         nature_map = [
-            ('Route à 1 chaussée',     'Desserte locale',            '#FAEDC8', 0.7),
-            ('Route à 2 chaussées',    'Desserte locale',            '#FAEDC8', 0.8),
-            ('Route empierrée',        'Route empierrée',            '#7C7C7C', 0.6),
-            ('Rond-point',             'Voie communale (Rond-point)', '#FCF6B5', 0.7),
-            ('Chemin',                 'Chemin rural (Chemin)',       '#8C7274', 0.5),
-            ('Sentier',                'Chemin rural (Sentier)',      '#8C7274', 0.4),
-            ('Piste cyclable',         'Piste cyclable',             '#9B5CCC', 0.5),
-            ('Bac ou liaison maritime','Bac / Maritime',             '#5792C2', 0.5),
+            ('Desserte locale',  ["Route à 1 chaussée", "Route à 2 chaussées"], '#FAEDC8', 0.7),
+            ('Route empierrée',  ["Route empierrée"],                           '#7C7C7C', 0.6),
+            ('Voie communale',   ["Rond-point"],                                '#FCF6B5', 0.7),
+            ('Chemin rural',     ["Chemin", "Sentier"],                         '#8C7274', 0.5),
+            ('Piste cyclable',   ["Piste cyclable"],                            '#9B5CCC', 0.5),
+            ('Bac / Maritime',   ["Bac ou liaison maritime"],                   '#5792C2', 0.5),
         ]
-        for nature, label, color, width in nature_map:
+        for label, natures, color, width in nature_map:
+            expr = ' OR '.join(f"\"nature\" = '{n}'" for n in natures)
             rule = QgsRuleBasedRenderer.Rule(make_line(color, width))
             rule.setLabel(label)
-            rule.setFilterExpression(f"\"nature\" = '{nature}' AND {imp_fallback}")
+            rule.setFilterExpression(f"({expr}) AND {imp_fallback}")
             root_rule.appendChild(rule)
 
         # Règle par défaut (éléments non catégorisés)
@@ -3158,31 +3158,20 @@ class VoirieCommunale:
 
         # ---- 2. Catégorisation par champ 'highway' ----
         highway_map = [
-            ('motorway',       'Autoroute',           '#F2A824', 1.4),
-            ('motorway_link',  'Autoroute (bretelle)', '#F2A824', 0.8),
-            ('trunk',          'Nationale',           '#F2D7A2', 1.2),
-            ('trunk_link',     'Nationale (bretelle)', '#F2D7A2', 0.8),
-            ('primary',        'Nationale',           '#F2D7A2', 1.0),
-            ('primary_link',   'Nationale (bretelle)', '#F2D7A2', 0.7),
-            ('secondary',      'Départementale',      '#FCF5AF', 0.8),
-            ('secondary_link', 'Départementale (bretelle)', '#FCF5AF', 0.6),
-            ('tertiary',       'Route intercommunale', '#FCF0A8', 0.7),
-            ('tertiary_link',  'Route intercommunale (bretelle)', '#FCF0A8', 0.5),
-            ('unclassified',   'Desserte locale',     '#FAEDC8', 0.6),
-            ('service',        'Desserte locale',     '#FAEDC8', 0.4),
-            ('living_street',  'Desserte locale',     '#FAEDC8', 0.4),
-            ('residential',    'Voie communale',      '#FCF6B5', 0.5),
-            ('track',          'Chemin rural',        '#8C7274', 0.5),
-            ('path',           'Chemin rural',        '#8C7274', 0.4),
-            ('footway',        'Chemin rural',        '#8C7274', 0.3),
-            ('bridleway',      'Chemin rural',        '#8C7274', 0.4),
-            ('steps',          'Chemin rural',        '#8C7274', 0.3),
-            ('cycleway',       'Piste cyclable',      '#9B5CCC', 0.4),
+            ('Autoroute',            ['motorway', 'motorway_link'],                              '#F2A824', 1.2),
+            ('Nationale',            ['trunk', 'trunk_link', 'primary', 'primary_link'],         '#F2D7A2', 1.0),
+            ('Départementale',       ['secondary', 'secondary_link'],                           '#FCF5AF', 0.8),
+            ('Route intercommunale', ['tertiary', 'tertiary_link'],                              '#FCF0A8', 0.7),
+            ('Desserte locale',      ['unclassified', 'service', 'living_street'],               '#FAEDC8', 0.6),
+            ('Voie communale',       ['residential'],                                            '#FCF6B5', 0.5),
+            ('Chemin rural',         ['track', 'path', 'footway', 'bridleway', 'steps'],         '#8C7274', 0.5),
+            ('Piste cyclable',       ['cycleway'],                                               '#9B5CCC', 0.4),
         ]
-        for highway_val, label, color, width in highway_map:
+        for label, vals, color, width in highway_map:
+            expr = ' OR '.join(f"\"highway\" = '{v}'" for v in vals)
             rule = QgsRuleBasedRenderer.Rule(make_line(color, width))
-            rule.setLabel(f'{label} ({highway_val})')
-            rule.setFilterExpression(f"\"highway\" = '{highway_val}'")
+            rule.setLabel(label)
+            rule.setFilterExpression(expr)
             root_rule.appendChild(rule)
 
         # Règle par défaut
