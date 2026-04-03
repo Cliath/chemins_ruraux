@@ -4,10 +4,21 @@ Version management for Voirie Communale plugin
 """
 
 
-__version__ = "0.14.9"
-__version_info__ = (0, 14, 9)
+__version__ = "0.15.1"
+__version_info__ = (0, 15, 1)
 
 VERSION_HISTORY = {
+    "0.15.0": {
+        "date": "2026-04-03",
+        "changes": [
+            "Harmonisation des couleurs de style PLAN.IGN (standard.json @z15) sur toutes les couches vecteur.",
+            "BD TOPO tron\u00e7ons : logique de priorit\u00e9 cpx_classement_administratif \u2192 importance \u2192 nature (fallback imp\u2265 5).",
+            "Ajout cat\u00e9gories Route intercommunale (#FCF0A8) et Desserte locale (#FAEDC8) dans tous les styles vecteur.",
+            "MagOSM : r\u00e9partition highway align\u00e9e sur la palette (motorway/trunk/primary=nationale, secondary=d\u00e9p., tertiary=intercom., unclassified/service/living_street=desserte locale).",
+            "BAN : marqueurs CR (#8C7274) et VC (#B4B4B4).",
+        ]
+    },
+
     "0.12.3": {
         "date": "2026-03-07",
         "changes": [

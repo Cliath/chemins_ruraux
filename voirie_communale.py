@@ -1165,47 +1165,72 @@ class VoirieCommunale:
 
         root_rule = QgsRuleBasedRenderer.Rule(None)  # règle racine (conteneur)
 
-        # ---- 1. Règles de filtrage par regex (champ nom_collaboratif_gauche) ----
+        # ---- 1. Regex CR / VC sur nom_collaboratif_gauche (prioritaires) ----
         nom_field = 'nom_collaboratif_gauche'
 
-        rule_cr = QgsRuleBasedRenderer.Rule(make_line('#A0522D', 0.7))
-        rule_cr.setLabel('Chemin rural')
+        rule_cr = QgsRuleBasedRenderer.Rule(make_line('#8C7274', 0.7))
+        rule_cr.setLabel('Chemin rural (nom)')
         rule_cr.setFilterExpression(
             f"regexp_match(\"{nom_field}\", '{self._qgis_expr_regex(regex_chemin)}') > 0"
         )
         root_rule.appendChild(rule_cr)
 
-        rule_vc = QgsRuleBasedRenderer.Rule(make_line('#4169E1', 0.7))
-        rule_vc.setLabel('Voie communale')
+        rule_vc = QgsRuleBasedRenderer.Rule(make_line('#FCF6B5', 0.7))
+        rule_vc.setLabel('Voie communale (nom)')
         rule_vc.setFilterExpression(
             f"regexp_match(\"{nom_field}\", '{self._qgis_expr_regex(regex_voie)}') > 0"
         )
         root_rule.appendChild(rule_vc)
 
-        # ---- 2. Règles par nature (pour tout ce qui n'est pas matché par les regex) ----
-        # IS NULL ou ELSE : condit. "ELSE" en QgsRuleBasedRenderer = is_active + pas de filtre
-        nature_map = [
-            ('Type autoroutier',       '#CC0000', 1.4),
-            ('Route à 2 chaussées',    '#FF6600', 1.0),
-            ('Route à 1 chaussée',     '#FFAA00', 0.8),
-            ('Route empierrée',        '#996633', 0.6),
-            ('Chemin',                 '#C8A46E', 0.5),
-            ('Piste cyclable',         '#00AA00', 0.5),
-            ('Sentier',                '#DDBB88', 0.4),
-            ('Bac ou liaison maritime','#0055CC', 0.5),
-            ('Bretelle',               '#FF9999', 0.6),
-            ('Rond-point',             '#FF9999', 0.6),
+        # ---- 2. cpx_classement_administratif ----
+        cpx_map = [
+            ('Autoroute',            '#F2A824', 1.4),
+            ('Nationale',            '#F2D7A2', 1.2),
+            ('Départementale',       '#FCF5AF', 0.9),
+            ('Route intercommunale', '#FCF0A8', 0.8),
+            ('Voie communale',       '#FCF6B5', 0.7),
+            ('Chemin rural',         '#8C7274', 0.6),
         ]
-        for nature, color, width in nature_map:
+        for cpx_val, color, width in cpx_map:
             rule = QgsRuleBasedRenderer.Rule(make_line(color, width))
-            rule.setLabel(nature)
-            # N'exclut volontairement pas les règles de filtrage : si un tronçon matche les deux
-            # (nom + nature), la première règle matchée s'applique (chemin/voie prioritaire)
-            rule.setFilterExpression(f"\"nature\" = '{nature}'")
+            rule.setLabel(cpx_val)
+            rule.setFilterExpression(f"\"cpx_classement_administratif\" = '{cpx_val}'")
+            root_rule.appendChild(rule)
+
+        # ---- 3. Importance (fallback si cpx_classement non renseigné) ----
+        cpx_null = "(\"cpx_classement_administratif\" IS NULL OR \"cpx_classement_administratif\" = '')"
+        importance_map = [
+            (1, 'Autoroute (importance)',      '#F2A824', 1.4),
+            (2, 'Nationale (importance)',       '#F2D7A2', 1.2),
+            (3, 'Départementale (importance)',  '#FCF5AF', 0.9),
+            (4, 'Départementale (importance)',  '#FCF5AF', 0.9),
+        ]
+        for imp_val, label, color, width in importance_map:
+            rule = QgsRuleBasedRenderer.Rule(make_line(color, width))
+            rule.setLabel(label)
+            rule.setFilterExpression(f"\"importance\" = {imp_val} AND {cpx_null}")
+            root_rule.appendChild(rule)
+
+        # ---- 4. Nature (fallback si importance ≥ 5 ou non renseignée) ----
+        imp_fallback = f"({cpx_null} AND (\"importance\" IS NULL OR \"importance\" >= 5))"
+        nature_map = [
+            ('Route à 1 chaussée',     'Desserte locale',            '#FAEDC8', 0.7),
+            ('Route à 2 chaussées',    'Desserte locale',            '#FAEDC8', 0.8),
+            ('Route empierrée',        'Route empierrée',            '#7C7C7C', 0.6),
+            ('Rond-point',             'Voie communale (Rond-point)', '#FCF6B5', 0.7),
+            ('Chemin',                 'Chemin rural (Chemin)',       '#8C7274', 0.5),
+            ('Sentier',                'Chemin rural (Sentier)',      '#8C7274', 0.4),
+            ('Piste cyclable',         'Piste cyclable',             '#9B5CCC', 0.5),
+            ('Bac ou liaison maritime','Bac / Maritime',             '#5792C2', 0.5),
+        ]
+        for nature, label, color, width in nature_map:
+            rule = QgsRuleBasedRenderer.Rule(make_line(color, width))
+            rule.setLabel(label)
+            rule.setFilterExpression(f"\"nature\" = '{nature}' AND {imp_fallback}")
             root_rule.appendChild(rule)
 
         # Règle par défaut (éléments non catégorisés)
-        rule_default = QgsRuleBasedRenderer.Rule(make_line('#AAAAAA', 0.4))
+        rule_default = QgsRuleBasedRenderer.Rule(make_line('#969696', 0.4))
         rule_default.setLabel('(autre)')
         rule_default.setIsElse(True)
         root_rule.appendChild(rule_default)
@@ -1237,12 +1262,12 @@ class VoirieCommunale:
         """Applique une symbologie catégorisée sur 'type_de_route' aux routes BD TOPO nommées."""
         from qgis.core import QgsCategorizedSymbolRenderer, QgsRendererCategory, QgsSymbol
         color_map = {
-            'Autoroute': '#FF0000',
-            'Nationale': '#0000FF',
-            'Départementale': '#00AA00',
-            'Route intercommunale': '#FF69B4',
-            'Voie communale': '#FFD700',
-            'Chemin rural': '#A0522D'
+            'Autoroute':            '#F2A824',
+            'Nationale':            '#F2D7A2',
+            'Départementale':       '#FCF5AF',
+            'Route intercommunale': '#FCF0A8',
+            'Voie communale':       '#FCF6B5',
+            'Chemin rural':         '#8C7274',
         }
         categories = []
         for route_type, color in color_map.items():
@@ -2410,16 +2435,16 @@ class VoirieCommunale:
 
         root_rule = QgsRuleBasedRenderer.Rule(None)
 
-        # Chemin rural – marron chocolat
-        rule_cr = QgsRuleBasedRenderer.Rule(make_marker('#D2691E', '#8B4513'))
+        # Chemin rural
+        rule_cr = QgsRuleBasedRenderer.Rule(make_marker('#8C7274', '#6B5557'))
         rule_cr.setLabel('Chemin rural')
         rule_cr.setFilterExpression(
             f"regexp_match(\"{field_name}\", '{self._qgis_expr_regex(regex_chemin)}') > 0"
         )
         root_rule.appendChild(rule_cr)
 
-        # Voie communale – bleu royal
-        rule_vc = QgsRuleBasedRenderer.Rule(make_marker('#4169E1', '#191970'))
+        # Voie communale
+        rule_vc = QgsRuleBasedRenderer.Rule(make_marker('#B4B4B4', '#909090'))
         rule_vc.setLabel('Voie communale')
         rule_vc.setFilterExpression(
             f"regexp_match(\"{field_name}\", '{self._qgis_expr_regex(regex_voie)}') > 0"
@@ -2926,9 +2951,9 @@ class VoirieCommunale:
         root = QgsRuleBasedRenderer.Rule(None)
 
         rules = [
-            ('"ref" LIKE \'CE%\'',                           make_sym('#27ae60', '0.6'), 'CE – Chemin d\'exploitation'),
-            ('"ref" LIKE \'C%\' AND "ref" NOT LIKE \'CE%\'', make_sym('#e67e22', '0.6'), 'C – Voie communale'),
-            ('"ref" LIKE \'R%\'',                            make_sym('#c0392b', '0.6'), 'R – Chemin rural'),
+            ('"ref" LIKE \'CE%\'',                           make_sym('#8C7274', '0.6'), 'CE – Chemin d\'exploitation'),
+            ('"ref" LIKE \'C%\' AND "ref" NOT LIKE \'CE%\'', make_sym('#FCF6B5', '0.6'), 'C – Voie communale'),
+            ('"ref" LIKE \'R%\'',                            make_sym('#8C7274', '0.6'), 'R – Chemin rural'),
         ]
 
         for expr, sym, label in rules:
@@ -3117,15 +3142,15 @@ class VoirieCommunale:
         root_rule = QgsRuleBasedRenderer.Rule(None)
 
         # ---- 1. Regex CR / VC (prioritaires) ----
-        rule_cr = QgsRuleBasedRenderer.Rule(make_line('#A0522D', 0.7))
-        rule_cr.setLabel('Chemin rural')
+        rule_cr = QgsRuleBasedRenderer.Rule(make_line('#8C7274', 0.7))
+        rule_cr.setLabel('Chemin rural (nom)')
         rule_cr.setFilterExpression(
             f"regexp_match(\"{nom_field}\", '{self._qgis_expr_regex(regex_chemin)}') > 0"
         )
         root_rule.appendChild(rule_cr)
 
-        rule_vc = QgsRuleBasedRenderer.Rule(make_line('#4169E1', 0.7))
-        rule_vc.setLabel('Voie communale')
+        rule_vc = QgsRuleBasedRenderer.Rule(make_line('#FCF6B5', 0.7))
+        rule_vc.setLabel('Voie communale (nom)')
         rule_vc.setFilterExpression(
             f"regexp_match(\"{nom_field}\", '{self._qgis_expr_regex(regex_voie)}') > 0"
         )
@@ -3133,35 +3158,35 @@ class VoirieCommunale:
 
         # ---- 2. Catégorisation par champ 'highway' ----
         highway_map = [
-            ('motorway',       '#CC0000', 1.4),
-            ('motorway_link',  '#DD4444', 0.8),
-            ('trunk',          '#FF6600', 1.2),
-            ('trunk_link',     '#FF8844', 0.8),
-            ('primary',        '#FF8800', 1.0),
-            ('primary_link',   '#FFAA44', 0.7),
-            ('secondary',      '#FFAA00', 0.8),
-            ('secondary_link', '#FFCC44', 0.6),
-            ('tertiary',       '#FFCC44', 0.7),
-            ('tertiary_link',  '#FFDD88', 0.5),
-            ('unclassified',   '#AAAAAA', 0.6),
-            ('residential',    '#CCCCCC', 0.5),
-            ('service',        '#DDDDDD', 0.4),
-            ('living_street',  '#EEEECC', 0.4),
-            ('track',          '#C8A46E', 0.5),
-            ('path',           '#DDBB88', 0.4),
-            ('footway',        '#888888', 0.3),
-            ('cycleway',       '#00AA00', 0.4),
-            ('bridleway',      '#996633', 0.4),
-            ('steps',          '#666666', 0.3),
+            ('motorway',       'Autoroute',           '#F2A824', 1.4),
+            ('motorway_link',  'Autoroute (bretelle)', '#F2A824', 0.8),
+            ('trunk',          'Nationale',           '#F2D7A2', 1.2),
+            ('trunk_link',     'Nationale (bretelle)', '#F2D7A2', 0.8),
+            ('primary',        'Nationale',           '#F2D7A2', 1.0),
+            ('primary_link',   'Nationale (bretelle)', '#F2D7A2', 0.7),
+            ('secondary',      'Départementale',      '#FCF5AF', 0.8),
+            ('secondary_link', 'Départementale (bretelle)', '#FCF5AF', 0.6),
+            ('tertiary',       'Route intercommunale', '#FCF0A8', 0.7),
+            ('tertiary_link',  'Route intercommunale (bretelle)', '#FCF0A8', 0.5),
+            ('unclassified',   'Desserte locale',     '#FAEDC8', 0.6),
+            ('service',        'Desserte locale',     '#FAEDC8', 0.4),
+            ('living_street',  'Desserte locale',     '#FAEDC8', 0.4),
+            ('residential',    'Voie communale',      '#FCF6B5', 0.5),
+            ('track',          'Chemin rural',        '#8C7274', 0.5),
+            ('path',           'Chemin rural',        '#8C7274', 0.4),
+            ('footway',        'Chemin rural',        '#8C7274', 0.3),
+            ('bridleway',      'Chemin rural',        '#8C7274', 0.4),
+            ('steps',          'Chemin rural',        '#8C7274', 0.3),
+            ('cycleway',       'Piste cyclable',      '#9B5CCC', 0.4),
         ]
-        for highway_val, color, width in highway_map:
+        for highway_val, label, color, width in highway_map:
             rule = QgsRuleBasedRenderer.Rule(make_line(color, width))
-            rule.setLabel(highway_val)
+            rule.setLabel(f'{label} ({highway_val})')
             rule.setFilterExpression(f"\"highway\" = '{highway_val}'")
             root_rule.appendChild(rule)
 
         # Règle par défaut
-        rule_default = QgsRuleBasedRenderer.Rule(make_line('#AAAAAA', 0.4))
+        rule_default = QgsRuleBasedRenderer.Rule(make_line('#969696', 0.4))
         rule_default.setLabel('(autre)')
         rule_default.setIsElse(True)
         root_rule.appendChild(rule_default)

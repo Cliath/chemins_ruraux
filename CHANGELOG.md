@@ -1,3 +1,12 @@
+# [0.15.0] - 2026-04-03
+### Modifié
+- **Harmonisation des couleurs PLAN.IGN** : toutes les couches vecteur utilisent désormais la palette de couleurs intérieures PLAN.IGN `standard.json` au niveau de zoom 15 (\u2248 1:10 000).
+- **BD TOPO tron\u00e7ons** : la symbologie applique d\u00e9sormais une cha\u00eene de priorit\u00e9 : (1) `cpx_classement_administratif`, (2) `importance` 1-4, (3) `nature` en fallback si `importance \u2265 5`.
+- **Nouvelles cat\u00e9gories** : *Route intercommunale* (`#FCF0A8`) et *Desserte locale* (`#FAEDC8`) dans toutes les m\u00e9thodes de style.
+- **MagOSM** : `tertiary`/`tertiary_link` \u2192 Route intercommunale ; `unclassified`/`service`/`living_street` \u2192 Desserte locale ; `track`/`path`/`footway`/`bridleway`/`steps` \u2192 Chemin rural ; `cycleway` \u2192 Piste cyclable.
+- **BAN** : marqueurs Chemin rural `#8C7274`, Voie communale `#B4B4B4`.
+- **OSM** : `CE%` et `R%` \u2192 `#8C7274` ; `C%` \u2192 `#FCF6B5`.
+
 # [0.14.9] - 2026-04-03
 ### Corrigé
 - **Pagination WFS** : la condition d'arrêt de pagination utilise désormais `numberMatched` / `numberReturned` fournis par WFS 2.0 quand disponibles. Évite une requête réseau superflue en fin de série. Fallback sur l'ancien comportement (`len(batch) < page_size`) si `numberMatched` est absent ou `"unknown"` (applicable aux 4 méthodes de pagination : `_fetch_wfs_paginated_to_vsimem`, `_fetch_magosm_to_vsimem`, et leurs équivalents synchrones).
