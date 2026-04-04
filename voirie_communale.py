@@ -1159,8 +1159,11 @@ class VoirieCommunale:
             QgsLineSymbol
         )
 
-        def make_line(color, width):
-            sym = QgsLineSymbol.createSimple({'color': color, 'width': str(width)})
+        def make_line(color, width, dash=False):
+            props = {'color': color, 'width': str(width)}
+            if dash:
+                props['line_style'] = 'dash'
+            sym = QgsLineSymbol.createSimple(props)
             return sym
 
         root_rule = QgsRuleBasedRenderer.Rule(None)  # règle racine (conteneur)
@@ -1215,13 +1218,15 @@ class VoirieCommunale:
              '#8C7274', 0.5),
             ('Sentier',
              "({imp_fallback} AND \"nature\" = 'Sentier')".format(imp_fallback=imp_fallback),
-             '#8C7274', 0.4),
+             '#8C7274', 0.4, True),
             ('Bac / Maritime',
              "({imp_fallback} AND \"nature\" = 'Bac ou liaison maritime')".format(imp_fallback=imp_fallback),
              '#5792C2', 0.5),
         ]
-        for label, expr, color, width in categories:
-            rule = QgsRuleBasedRenderer.Rule(make_line(color, width))
+        for item in categories:
+            label, expr, color, width = item[0], item[1], item[2], item[3]
+            dash = item[4] if len(item) > 4 else False
+            rule = QgsRuleBasedRenderer.Rule(make_line(color, width, dash))
             rule.setLabel(label)
             rule.setFilterExpression(expr)
             root_rule.appendChild(rule)
