@@ -1216,9 +1216,6 @@ class VoirieCommunale:
             ('Sentier',
              "({imp_fallback} AND \"nature\" = 'Sentier')".format(imp_fallback=imp_fallback),
              '#8C7274', 0.4),
-            ('Piste cyclable',
-             "({imp_fallback} AND \"nature\" = 'Piste cyclable')".format(imp_fallback=imp_fallback),
-             '#9B5CCC', 0.5),
             ('Bac / Maritime',
              "({imp_fallback} AND \"nature\" = 'Bac ou liaison maritime')".format(imp_fallback=imp_fallback),
              '#5792C2', 0.5),
@@ -1228,12 +1225,6 @@ class VoirieCommunale:
             rule.setLabel(label)
             rule.setFilterExpression(expr)
             root_rule.appendChild(rule)
-
-        # Règle par défaut (éléments non catégorisés)
-        rule_default = QgsRuleBasedRenderer.Rule(make_line('#969696', 0.4))
-        rule_default.setLabel('(autre)')
-        rule_default.setIsElse(True)
-        root_rule.appendChild(rule_default)
 
         layer.setRenderer(QgsRuleBasedRenderer(root_rule))
 
