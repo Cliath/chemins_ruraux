@@ -3128,11 +3128,14 @@ class VoirieCommunale:
         """
         from qgis.core import QgsRuleBasedRenderer, QgsLineSymbol
 
-        def make_line(color, width):
-            return QgsLineSymbol.createSimple({
+        def make_line(color, width, dash=False):
+            props = {
                 'color': color, 'width': str(width),
                 'capstyle': 'round', 'joinstyle': 'round',
-            })
+            }
+            if dash:
+                props['line_style'] = 'dash'
+            return QgsLineSymbol.createSimple(props)
 
         nom_field = 'name'
         root_rule = QgsRuleBasedRenderer.Rule(None)
@@ -3154,18 +3157,18 @@ class VoirieCommunale:
 
         # ---- 2. Catégorisation par champ 'highway' ----
         highway_map = [
-            ('Autoroute',            ['motorway', 'motorway_link'],                              '#f26119', 1.2),
-            ('Nationale',            ['trunk', 'trunk_link', 'primary', 'primary_link'],         '#f2a824', 1.0),
-            ('Départementale',       ['secondary', 'secondary_link'],                           '#F2D7A2', 0.8),
-            ('Route intercommunale', ['tertiary', 'tertiary_link'],                              '#2db9fc', 0.7),
-            ('Desserte',             ['unclassified', 'service', 'living_street'],               '#ededed', 0.6),
-            ('Voie communale',       ['residential'],                                            '#FCF6B5', 0.5),
-            ('Chemin rural',         ['track', 'path', 'footway', 'bridleway', 'steps'],         '#8C7274', 0.5),
-            ('Piste cyclable',       ['cycleway'],                                               '#9B5CCC', 0.4),
+            ('Autoroute',            ['motorway', 'motorway_link'],                                    '#f26119', 1.2, False),
+            ('Nationale',            ['trunk', 'trunk_link', 'primary', 'primary_link'],               '#f2a824', 1.0, False),
+            ('Départementale',       ['secondary', 'secondary_link'],                                 '#F2D7A2', 0.8, False),
+            ('Route intercommunale', ['tertiary', 'tertiary_link'],                                    '#2db9fc', 0.7, False),
+            ('Desserte',             ['unclassified', 'residential', 'service', 'living_street'],      '#ededed', 0.6, False),
+            ('Chemin',               ['track', 'path', 'bridleway'],                                   '#8C7274', 0.5, False),
+            ('Sentier',              ['footway', 'steps'],                                             '#8C7274', 0.4, True),
+            ('Piste cyclable',       ['cycleway'],                                                     '#9B5CCC', 0.4, False),
         ]
-        for label, vals, color, width in highway_map:
+        for label, vals, color, width, dash in highway_map:
             expr = ' OR '.join(f"\"highway\" = '{v}'" for v in vals)
-            rule = QgsRuleBasedRenderer.Rule(make_line(color, width))
+            rule = QgsRuleBasedRenderer.Rule(make_line(color, width, dash))
             rule.setLabel(label)
             rule.setFilterExpression(expr)
             root_rule.appendChild(rule)

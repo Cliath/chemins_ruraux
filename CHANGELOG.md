@@ -1,3 +1,8 @@
+# [0.15.12] - 2026-04-04
+### Modifié
+- **MagOSM** : catégorie *Voie communale* (residential) fusionnée dans *Desserte* — Desserte couvre désormais `unclassified`, `residential`, `service`, `living_street`.
+- **MagOSM** : catégorie *Chemin rural* scindée en *Chemin* (`track`, `path`, `bridleway`) et *Sentier* (`footway`, `steps`, pointillés).
+
 # [0.15.11] - 2026-04-04
 ### Modifié
 - **MagOSM** : harmonisation des couleurs avec la palette BD TOPO — Autoroute `#f26119`, Nationale `#f2a824`, Départementale `#F2D7A2`, Route intercommunale `#2db9fc`, Desserte `#ededed`. Renommage *Desserte locale* → *Desserte*.
