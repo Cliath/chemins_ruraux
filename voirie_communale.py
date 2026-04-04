@@ -1182,51 +1182,47 @@ class VoirieCommunale:
         )
         root_rule.appendChild(rule_vc)
 
-        # ---- 2. cpx_classement_administratif ----
+        # ---- 2. Catégories fusionnées (cpx OR importance OR nature) ----
+        # Une seule règle par catégorie sémantique
         cpx_null = "(\"cpx_classement_administratif\" IS NULL OR \"cpx_classement_administratif\" = '')"
-        cpx_map = [
-            ('Autoroute',            ["Autoroute"],                                   '#F2A824', 1.4),
-            ('Nationale',            ["Nationale"],                                   '#F2D7A2', 1.2),
-            ('Départementale',       ["Départementale"],                              '#FCF5AF', 0.9),
-            ('Route intercommunale', ["Route intercommunale"],                        '#FCF0A8', 0.8),
-            ('Voie communale',       ["Voie communale"],                              '#FCF6B5', 0.7),
-            ('Chemin rural',         ["Chemin rural"],                                '#8C7274', 0.6),
+        imp_fallback = f"({cpx_null} AND (\"importance\" IS NULL OR \"importance\" >= 5))"
+
+        categories = [
+            ('Autoroute',
+             "\"cpx_classement_administratif\" = 'Autoroute' OR ({cpx_null} AND \"importance\" = 1)".format(cpx_null=cpx_null),
+             '#F2A824', 1.4),
+            ('Nationale',
+             "\"cpx_classement_administratif\" = 'Nationale' OR ({cpx_null} AND \"importance\" = 2)".format(cpx_null=cpx_null),
+             '#F2D7A2', 1.2),
+            ('Départementale',
+             "\"cpx_classement_administratif\" = 'Départementale' OR ({cpx_null} AND \"importance\" IN (3, 4))".format(cpx_null=cpx_null),
+             '#FCF5AF', 0.9),
+            ('Route intercommunale',
+             "\"cpx_classement_administratif\" = 'Route intercommunale'",
+             '#FCF0A8', 0.8),
+            ('Desserte locale',
+             "({imp_fallback} AND (\"nature\" = 'Route à 1 chaussée' OR \"nature\" = 'Route à 2 chaussées'))".format(imp_fallback=imp_fallback),
+             '#FAEDC8', 0.7),
+            ('Voie communale',
+             "\"cpx_classement_administratif\" = 'Voie communale' OR ({imp_fallback} AND \"nature\" = 'Rond-point')".format(imp_fallback=imp_fallback),
+             '#FCF6B5', 0.7),
+            ('Route empierrée',
+             "({imp_fallback} AND \"nature\" = 'Route empierrée')".format(imp_fallback=imp_fallback),
+             '#7C7C7C', 0.6),
+            ('Chemin rural',
+             "\"cpx_classement_administratif\" = 'Chemin rural' OR ({imp_fallback} AND (\"nature\" = 'Chemin' OR \"nature\" = 'Sentier'))".format(imp_fallback=imp_fallback),
+             '#8C7274', 0.6),
+            ('Piste cyclable',
+             "({imp_fallback} AND \"nature\" = 'Piste cyclable')".format(imp_fallback=imp_fallback),
+             '#9B5CCC', 0.5),
+            ('Bac / Maritime',
+             "({imp_fallback} AND \"nature\" = 'Bac ou liaison maritime')".format(imp_fallback=imp_fallback),
+             '#5792C2', 0.5),
         ]
-        for label, vals, color, width in cpx_map:
-            expr = ' OR '.join(f"\"cpx_classement_administratif\" = '{v}'" for v in vals)
+        for label, expr, color, width in categories:
             rule = QgsRuleBasedRenderer.Rule(make_line(color, width))
             rule.setLabel(label)
             rule.setFilterExpression(expr)
-            root_rule.appendChild(rule)
-
-        # ---- 3. Importance (fallback si cpx_classement non renseigné) ----
-        imp_fallback_base = f"{cpx_null}"
-        importance_map = [
-            ('Autoroute',      '"importance" = 1',          '#F2A824', 1.4),
-            ('Nationale',      '"importance" = 2',          '#F2D7A2', 1.2),
-            ('Départementale', '"importance" IN (3, 4)',    '#FCF5AF', 0.9),
-        ]
-        for label, imp_expr, color, width in importance_map:
-            rule = QgsRuleBasedRenderer.Rule(make_line(color, width))
-            rule.setLabel(label)
-            rule.setFilterExpression(f"{imp_expr} AND {imp_fallback_base}")
-            root_rule.appendChild(rule)
-
-        # ---- 4. Nature (fallback si importance ≥ 5 ou non renseignée) ----
-        imp_fallback = f"({cpx_null} AND (\"importance\" IS NULL OR \"importance\" >= 5))"
-        nature_map = [
-            ('Desserte locale',  ["Route à 1 chaussée", "Route à 2 chaussées"], '#FAEDC8', 0.7),
-            ('Route empierrée',  ["Route empierrée"],                           '#7C7C7C', 0.6),
-            ('Voie communale',   ["Rond-point"],                                '#FCF6B5', 0.7),
-            ('Chemin rural',     ["Chemin", "Sentier"],                         '#8C7274', 0.5),
-            ('Piste cyclable',   ["Piste cyclable"],                            '#9B5CCC', 0.5),
-            ('Bac / Maritime',   ["Bac ou liaison maritime"],                   '#5792C2', 0.5),
-        ]
-        for label, natures, color, width in nature_map:
-            expr = ' OR '.join(f"\"nature\" = '{n}'" for n in natures)
-            rule = QgsRuleBasedRenderer.Rule(make_line(color, width))
-            rule.setLabel(label)
-            rule.setFilterExpression(f"({expr}) AND {imp_fallback}")
             root_rule.appendChild(rule)
 
         # Règle par défaut (éléments non catégorisés)
