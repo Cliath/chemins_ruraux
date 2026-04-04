@@ -1172,6 +1172,7 @@ class VoirieCommunale:
         rule_cr.setLabel('Chemin rural (nom)')
         rule_cr.setFilterExpression(
             f"regexp_match(\"{nom_field}\", '{self._qgis_expr_regex(regex_chemin)}') > 0"
+            f" OR \"cpx_classement_administratif\" = 'Chemin rural'"
         )
         root_rule.appendChild(rule_cr)
 
@@ -1210,8 +1211,11 @@ class VoirieCommunale:
              "({imp_fallback} AND \"nature\" = 'Route empierrée')".format(imp_fallback=imp_fallback),
              '#7C7C7C', 0.6),
             ('Chemin rural',
-             "\"cpx_classement_administratif\" = 'Chemin rural' OR ({imp_fallback} AND (\"nature\" = 'Chemin' OR \"nature\" = 'Sentier'))".format(imp_fallback=imp_fallback),
-             '#8C7274', 0.6),
+             "({imp_fallback} AND \"nature\" = 'Chemin')".format(imp_fallback=imp_fallback),
+             '#8C7274', 0.5),
+            ('Sentier',
+             "({imp_fallback} AND \"nature\" = 'Sentier')".format(imp_fallback=imp_fallback),
+             '#8C7274', 0.4),
             ('Piste cyclable',
              "({imp_fallback} AND \"nature\" = 'Piste cyclable')".format(imp_fallback=imp_fallback),
              '#9B5CCC', 0.5),
