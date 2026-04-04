@@ -1,7 +1,7 @@
 # Voirie Communale - Plugin QGIS
 
 Plugin QGIS pour le recensement de la voirie communale (voies communales et chemins ruraux).  
-Version actuelle : **0.15.10**
+Version actuelle : **0.15.11** — voir [CHANGELOG](CHANGELOG.md)
 
 ## Installation
 
@@ -36,7 +36,7 @@ Ou via `build.bat` qui compile, package, push git et déploie en une commande :
 - **Barre de lancement** : le bouton du plugin ouvre 5 actions : *Charger des données*, *Numériser des données* (à venir), *Liste des tâches*, *Paramètres*, *À propos*
 - **Mémorisation** : dernier code INSEE et sélection des couches restaurés automatiquement à l'ouverture
 - **Paramètres** : zoom automatique, réordonnancement automatique, regex de filtrage des voies, et ordre des couches configurable par glisser-déposer
-- **Ordre canonique** configurable via `layer_order.json` (haut → bas) : BD TOPO Tronçons → BD TOPO Routes → Voirie comm. → Voirie dép. → OSM Routes → MagOSM Routes → BAN → MAJIC → Commune → Cadastre → PLAN IGN → Waze → OSM France → CoSIA → BD ORTHO® → Photos aériennes → SCAN 50® → Cassini → État-Major
+- **Ordre canonique** configurable via `layer_order.json` (haut → bas) : BD TOPO Tronçons → BD TOPO Routes → Voirie comm. → Voirie dép. → OSM Routes → MagOSM Routes → BAN → MAJIC → Commune → Cadastre → Géofoncier → PLAN IGN → Waze → OSM France → CoSIA → BD ORTHO® → Photos aériennes → SCAN 50® → Cassini → État-Major
 
 ### Données vectorielles (filtrées par code INSEE ou BBOX communale)
 
@@ -54,10 +54,25 @@ Ou via `build.bat` qui compile, package, push git et déploie en une commande :
 
 #### BD TOPO tronçons de route — style par règles
 
-Le style utilise un `QgsRuleBasedRenderer` sur le champ `nom_collaboratif_gauche` :
+Le style utilise un `QgsRuleBasedRenderer` avec la chaîne de priorité suivante :
 
-- Les regex de filtrage (chemin rural / voie communale, paramétrables dans les Paramètres) sont appliquées en priorité
-- Puis catégorisation par `nature` (autoroute, route à 1/2 chaussées, chemin, sentier…)
+1. **Regex sur `nom_collaboratif_gauche`** (paramétrable dans les Paramètres)
+   - *Chemin rural (nom)* → `#8C7274` — déclenche aussi si `cpx_classement_administratif = 'Chemin rural'`
+   - *Voie communale (nom)* → `#FCF6B5`
+2. **Catégories sémantiques** (cpx / importance / nature, par ordre de priorité)
+
+| Catégorie | Condition | Couleur |
+|-----------|-----------|---------|
+| Autoroute | cpx=Autoroute ou importance=1 | `#f26119` |
+| Nationale | cpx=Nationale ou importance=2 | `#f2a824` |
+| Départementale | cpx=Départementale ou importance=3 | `#F2D7A2` |
+| Route intercommunale | cpx=Route intercommunale | `#2db9fc` |
+| Liaison locale | importance=4 (sans cpx) | `#FCF0A8` |
+| Desserte | importance≥5 (sans cpx) + nature Route 1/2 chaussées ou Rond-point | `#ededed` |
+| Route empierrée | importance≥5 (sans cpx) + nature=Route empierrée | `#7C7C7C` |
+| Chemin | importance≥5 (sans cpx) + nature=Chemin | `#8C7274` |
+| Sentier | importance≥5 (sans cpx) + nature=Sentier | `#8C7274` (pointillés) |
+| Bac / Maritime | importance≥5 (sans cpx) + nature=Bac ou liaison maritime | `#5792C2` |
 
 #### Routes OSM — catégorisation par `ref`
 
@@ -65,13 +80,38 @@ Le style utilise un `QgsRuleBasedRenderer` sur le champ `nom_collaboratif_gauche
 - 🟠 **C** – Voie communale (`ref` commence par `C`, hors `CE`)
 - 🔴 **R** – Chemin rural (`ref` commence par `R`)
 
+#### Adresses BAN — style par règles
+
+Le style utilise un `QgsRuleBasedRenderer` sur le champ `nom_voie` :
+
+| Catégorie | Condition | Couleur marqueur |
+|-----------|-----------|------------------|
+| Chemin rural | regex chemin rural sur `nom_voie` | `#8C7274` |
+| Voie communale | regex voie communale sur `nom_voie` | `#B4B4B4` |
+| Autre | (tout le reste, désactivé par défaut) | `#808080` |
+
+L'étiquette affiche `numero + nom_voie`.
+
 #### Réseau routier OSM MagOSM — style par règles
 
 Le style utilise un `QgsRuleBasedRenderer` sur la couche `magosm:highways_line` :
 
-- Les regex de filtrage (chemin rural / voie communale, paramétrables) sont appliquées en priorité sur le champ `name`
-- Puis catégorisation par valeur du champ `highway` (motorway, trunk, primary… track, path, footway, cycleway…)
-- Service parfois lent — timeout de 180 s par page, pagination 500 entités/page
+1. **Regex sur `name`** (paramétrable) – *Chemin rural (nom)* `#8C7274` et *Voie communale (nom)* `#FCF6B5`
+2. **Catégorisation par `highway`** :
+
+| Catégorie | Valeurs `highway` | Couleur |
+|-----------|-------------------|---------|
+| Autoroute | motorway, motorway_link | `#f26119` |
+| Nationale | trunk, primary (+ _link) | `#f2a824` |
+| Départementale | secondary, secondary_link | `#F2D7A2` |
+| Route intercommunale | tertiary, tertiary_link | `#2db9fc` |
+| Desserte | unclassified, service, living_street | `#ededed` |
+| Voie communale | residential | `#FCF6B5` |
+| Chemin rural | track, path, footway, bridleway, steps | `#8C7274` |
+| Piste cyclable | cycleway | `#9B5CCC` |
+| (autre) | — | `#969696` |
+
+Service parfois lent — timeout 180 s par page, pagination 500 entités/page.
 
 ### Plans de fond
 
@@ -88,6 +128,7 @@ Le style utilise un `QgsRuleBasedRenderer` sur la couche `magosm:highways_line` 
 | **Carte de Cassini** | IGN Géoplateforme WMS |
 | **Carte de l'État-Major** | IGN Géoplateforme WMS |
 | **MNT LiDAR HD** | IGN Géoplateforme WMS |
+| **Géofoncier public** (RFU + Plans d'alignement, 5 couches) | Géofoncier — WMS public |
 
 ## Utilisation
 
@@ -140,6 +181,7 @@ voirie_communale/
 | Overpass API (OSM) | `https://overpass-api.de/api/interpreter` |
 | MagOSM WFS (Magellium) | `https://magosm.magellium.com/geoserver/ows` |
 | API Koumoul (MAJIC) | `https://koumoul.com/data-fair/api/v1/datasets/parcelles-des-personnes-morales` |
+| Géofoncier WMS public | `https://api2.geofoncier.fr/api/referentielsoge/wxs` |
 
 ## Licence
 

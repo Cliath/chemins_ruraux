@@ -3154,11 +3154,11 @@ class VoirieCommunale:
 
         # ---- 2. Catégorisation par champ 'highway' ----
         highway_map = [
-            ('Autoroute',            ['motorway', 'motorway_link'],                              '#F2A824', 1.2),
-            ('Nationale',            ['trunk', 'trunk_link', 'primary', 'primary_link'],         '#F2D7A2', 1.0),
-            ('Départementale',       ['secondary', 'secondary_link'],                           '#FCF5AF', 0.8),
-            ('Route intercommunale', ['tertiary', 'tertiary_link'],                              '#FCF0A8', 0.7),
-            ('Desserte locale',      ['unclassified', 'service', 'living_street'],               '#FAEDC8', 0.6),
+            ('Autoroute',            ['motorway', 'motorway_link'],                              '#f26119', 1.2),
+            ('Nationale',            ['trunk', 'trunk_link', 'primary', 'primary_link'],         '#f2a824', 1.0),
+            ('Départementale',       ['secondary', 'secondary_link'],                           '#F2D7A2', 0.8),
+            ('Route intercommunale', ['tertiary', 'tertiary_link'],                              '#2db9fc', 0.7),
+            ('Desserte',             ['unclassified', 'service', 'living_street'],               '#ededed', 0.6),
             ('Voie communale',       ['residential'],                                            '#FCF6B5', 0.5),
             ('Chemin rural',         ['track', 'path', 'footway', 'bridleway', 'steps'],         '#8C7274', 0.5),
             ('Piste cyclable',       ['cycleway'],                                               '#9B5CCC', 0.4),

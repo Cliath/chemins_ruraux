@@ -1,3 +1,51 @@
+# [0.15.11] - 2026-04-04
+### Modifié
+- **MagOSM** : harmonisation des couleurs avec la palette BD TOPO — Autoroute `#f26119`, Nationale `#f2a824`, Départementale `#F2D7A2`, Route intercommunale `#2db9fc`, Desserte `#ededed`. Renommage *Desserte locale* → *Desserte*.
+
+# [0.15.10] - 2026-04-04
+### Modifié
+- **BD TOPO tronçons** : catégorie *Sentier* affichée en pointillés (`line_style: dash`).
+
+# [0.15.9] - 2026-04-04
+### Modifié
+- **BD TOPO tronçons** : mise à jour de la palette de couleurs — Autoroute `#f26119`, Nationale `#f2a824`, Départementale `#F2D7A2`, Route intercommunale `#2db9fc`, Desserte `#ededed`.
+
+# [0.15.8] - 2026-04-04
+### Corrigé
+- **BD TOPO tronçons** : catégorie *Liaison locale* repositionnée après *Route intercommunale* dans l'ordre des règles.
+
+# [0.15.7] - 2026-04-04
+### Modifié
+- **BD TOPO tronçons** : renommage *Chemin rural* → *Chemin*, *Desserte locale* → *Desserte*.
+- **BD TOPO tronçons** : ajout de la catégorie *Liaison locale* pour `importance = 4` (anciennement inclus dans *Départementale*).
+- **BD TOPO tronçons** : *Départementale* restreinte à `importance = 3` uniquement.
+
+# [0.15.6] - 2026-04-03
+### Modifié
+- **BD TOPO tronçons** : catégorie *Voie communale* (nature=Rond-point) supprimée. Le Rond-point est désormais intégré à *Desserte locale* (nature = Route à 1 chaussée OR Route à 2 chaussées OR Rond-point).
+
+# [0.15.5] - 2026-04-03
+### Modifié
+- **BD TOPO tronçons** : catégorie *Piste cyclable* supprimée des règles.
+- **BD TOPO tronçons** : règle par défaut `(autre)` supprimée (les éléments non catégorisés ne sont plus affichés).
+
+# [0.15.4] - 2026-04-03
+### Modifié
+- **BD TOPO tronçons** : règle regex *Chemin rural (nom)* enrichie — déclenche aussi quand `cpx_classement_administratif = 'Chemin rural'`.
+- **BD TOPO tronçons** : catégorie *Chemin rural* scindée en *Chemin rural* (nature=Chemin, épaisseur 0.5) et *Sentier* (nature=Sentier, épaisseur 0.4).
+
+# [0.15.3] - 2026-04-03
+### Modifié
+- **BD TOPO tronçons** : fusion des trois blocs (cpx, importance, nature) en une seule liste `categories` avec une condition combinée par catégorie sémantique.
+
+# [0.15.2] - 2026-04-03
+### Modifié
+- **BD TOPO tronçons** : refactoring interne — `cpx_map`, `importance_map` et `nature_map` restructurés avec des listes de valeurs groupées (ex. Chemin rural = [Chemin, Sentier], Desserte locale = [Route à 1 chaussée, Route à 2 chaussées]).
+
+# [0.15.1] - 2026-04-03
+### Modifié
+- **BD TOPO tronçons** : premier jet de la symbologie PLAN.IGN avec les trois blocs séparés (cpx / importance / nature).
+
 # [0.15.0] - 2026-04-03
 ### Modifié
 - **Harmonisation des couleurs PLAN.IGN** : toutes les couches vecteur utilisent désormais la palette de couleurs intérieures PLAN.IGN `standard.json` au niveau de zoom 15 (\u2248 1:10 000).
