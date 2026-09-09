@@ -514,4 +514,53 @@ class StylesMixin:
             "VoirieCommunale", Qgis.Success
         )
 
+    def apply_filaires_bal_style(self, layer, regex_chemin=None, regex_voie=None):
+        """Style à règles pour la couche des filaires de voie BAL : mêmes regex de
+        catégorisation (Chemin rural / Voie communale) que BAN, BD TOPO tronçons,
+        MagOSM et EDIGEO, appliquées sur le nom de voie (champ 'nom'), avec
+        étiquetage. Auparavant cette couche ne recevait aucun style ni étiquette
+        (renderer/labeling par défaut de QGIS).
+
+        Args:
+            layer: La couche QgsVectorLayer des filaires de voie BAL à styliser
+            regex_chemin: Expression régulière QGIS pour détecter les chemins ruraux
+            regex_voie: Expression régulière QGIS pour détecter les voies communales
+        """
+        from qgis.core import QgsRuleBasedRenderer
+        regex_chemin = regex_chemin or SettingsDialog._DEFAULTS['ban_regex_chemin']
+        regex_voie = regex_voie or SettingsDialog._DEFAULTS['ban_regex_voie']
+
+        make_line = self._make_line_symbol
+
+        nom_field = 'nom'
+        root_rule = QgsRuleBasedRenderer.Rule(None)
+
+        rule_cr = QgsRuleBasedRenderer.Rule(make_line('#8C7274', 0.7))
+        rule_cr.setLabel('Chemin rural (nom)')
+        rule_cr.setFilterExpression(
+            f"regexp_match(\"{nom_field}\", '{self._qgis_expr_regex(regex_chemin)}') > 0"
+        )
+        root_rule.appendChild(rule_cr)
+
+        rule_vc = QgsRuleBasedRenderer.Rule(make_line('#FCF6B5', 0.7))
+        rule_vc.setLabel('Voie communale (nom)')
+        rule_vc.setFilterExpression(
+            f"regexp_match(\"{nom_field}\", '{self._qgis_expr_regex(regex_voie)}') > 0"
+        )
+        root_rule.appendChild(rule_vc)
+
+        rule_autre = QgsRuleBasedRenderer.Rule(make_line('#4A90D9', 0.4))
+        rule_autre.setLabel('(autre)')
+        rule_autre.setIsElse(True)
+        root_rule.appendChild(rule_autre)
+
+        layer.setRenderer(QgsRuleBasedRenderer(root_rule))
+
+        self._apply_simple_line_labels(layer, nom_field)
+
+        QgsMessageLog.logMessage(
+            "Style différencié appliqué à la couche Filaires de voie BAL (Chemin rural / Voie communale)",
+            "VoirieCommunale", Qgis.Success
+        )
+
 

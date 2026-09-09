@@ -719,6 +719,7 @@ class VoirieCommunale(LayerOrderMixin, WfsLoaderMixin, StylesMixin, CacheManager
         if filaires_bal_checked:
             if 'filaires_bal' in cache_hits:
                 filaires_bal_layer = cache_hits['filaires_bal']
+                self.apply_filaires_bal_style(filaires_bal_layer, regex_chemin=regex_chemin, regex_voie=regex_voie)
                 self._remove_layers_by_name(f"Filaires de voie BAL {code_insee}")
                 QgsProject.instance().addMapLayer(filaires_bal_layer, False)
                 QgsProject.instance().layerTreeRoot().addLayer(filaires_bal_layer)
@@ -729,6 +730,7 @@ class VoirieCommunale(LayerOrderMixin, WfsLoaderMixin, StylesMixin, CacheManager
                 filaires_bal_success, filaires_bal_layer, filaires_bal_no_data = self.load_filaires_bal(code_insee, progress_cb=update_label)
                 results.append(('Filaires de voie BAL', filaires_bal_success))
                 if filaires_bal_layer:
+                    self.apply_filaires_bal_style(filaires_bal_layer, regex_chemin=regex_chemin, regex_voie=regex_voie)
                     if self._save_layer_to_cache(code_insee, 'filaires_bal', filaires_bal_layer):
                         filaires_bal_layer = self._reload_layer_from_cache_preserving_style(
                             code_insee, 'filaires_bal', filaires_bal_layer, f"Filaires de voie BAL {code_insee}"

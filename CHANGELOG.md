@@ -1,3 +1,7 @@
+# [0.20.3] - 2026-09-09
+### Corrigé
+- **Filaires de voie BAL sans étiquette ni style** : contrairement aux autres couches de voies (BAN, BD TOPO tronçons, MagOSM, Voies EDIGEO), la couche « Filaires de voie BAL » n'avait jamais reçu de fonction de style — elle s'affichait avec le rendu par défaut de QGIS, sans étiquette de nom ni catégorisation Chemin rural / Voie communale. Une nouvelle méthode `apply_filaires_bal_style` (mêmes regex configurables que les autres couches) lui applique désormais le même traitement, avec étiquetage sur le champ « nom ».
+
 # [0.20.2] - 2026-09-09
 ### Corrigé
 - **Chargement des parcelles MAJIC : abandon complet à la première erreur réseau**. En observant la commune 05003, le serveur WFS IGN (data.geopf.fr) s'est révélé ponctuellement instable sur certains lots de la requête filtrée par idu (introduite en v0.20.0), avec des dépassements de délai (timeout) sur 1 ou 2 lots parmi une quinzaine. Le code interrompait alors tout le chargement dès la première erreur, même après avoir déjà récupéré la quasi-totalité des données — c'est ce qui donnait l'impression que « ça ne marche toujours pas » malgré le correctif précédent. Désormais :

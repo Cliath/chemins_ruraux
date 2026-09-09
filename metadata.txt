@@ -3,7 +3,7 @@ name=Voirie Communale
 qgisMinimumVersion=3.0
 tags=voirie,commune,chemin rural,voie communale,cadastre,BAN,OSM,IGN
 description=Plugin d'aide pour le recensement de la voirie communale (voies communales et chemins ruraux)
-version=0.20.2
+version=0.20.3
 author=Yann Schwarz
 email=yann.schwarz@gmail.com
 
@@ -17,7 +17,9 @@ repository=https://github.com/Cliath/voirie_communale
 
 # Recommended items:
 hasProcessingProvider=no
-changelog=    Version 0.20.2 (2026-09-09)
+changelog=    Version 0.20.3 (2026-09-09)
+    - Filaires de voie BAL sans étiquette ni style : contrairement aux autres couches de voies (BAN, BD TOPO tronçons, MagOSM, Voies EDIGEO), la couche « Filaires de voie BAL » n'avait jamais reçu de fonction de style — elle s'affichait avec le rendu par défaut de QGIS, sans étiquette de nom ni catégorisation Chemin rural / Voie communale. Une nouvelle méthode apply_filaires_bal_style (mêmes regex configurables que les autres couches) lui applique désormais le même traitement, avec étiquetage sur le champ « nom ».
+    Version 0.20.2 (2026-09-09)
     - Chargement des parcelles MAJIC : abandon complet à la première erreur réseau. En observant la commune 05003, le serveur WFS IGN (data.geopf.fr) s'est révélé ponctuellement instable sur certains lots de la requête filtrée par idu (introduite en v0.20.0), avec des dépassements de délai (timeout) sur 1 ou 2 lots parmi une quinzaine. Le code interrompait alors tout le chargement dès la première erreur, même après avoir déjà récupéré la quasi-totalité des données — c'est ce qui donnait l'impression que « ça ne marche toujours pas » malgré le correctif précédent. Désormais :
     - Chaque lot est retenté jusqu'à 3 fois (avec un court délai entre essais) avant d'être considéré en échec.
     - Si un lot reste en échec après ses 3 essais, seules les quelques parcelles de ce lot sont manquantes — le chargement se poursuit et aboutit avec le reste des données, au lieu d'échouer intégralement.
@@ -47,8 +49,6 @@ changelog=    Version 0.20.2 (2026-09-09)
     - Voies EDIGEO (cadastre) : style désormais catégorisé par regex (Chemin rural / Voie communale / Autre) sur le nom complet reconstitué, avec les mêmes expressions régulières (configurables via les mêmes clés de réglages ban_regex_chemin/ban_regex_voie) que celles déjà utilisées pour les couches BAN, BD TOPO tronçons et MagOSM. Auparavant la couche utilisait un style simple à trait unique.
     Version 0.18.1 (2026-08-02)
     - Voies EDIGEO (cadastre) : la couche VOIEP_id (« Dénomination de voie EDIGEO ») ajoutée en v0.18.0 a été retirée. Après vérification exhaustive sur l'ensemble des sections cadastrales d'une commune test, cette couche s'est révélée mélanger des toponymes divers (lieux-dits, bâtiments remarquables comme « Mairie »/« Poste », points cotés d'altitude, repères géodésiques) sans aucun champ permettant de distinguer un nom de voie des autres entrées. Seule la couche ZONCOMMUNI_id (voies, lignes) est donc conservée et chargée par la case à cocher « Voies (cadastre EDIGEO) ».
-    Version 0.18.0 (2026-08-02)
-    - Voies EDIGEO (cadastre) : nouvelle case à cocher chargeant les voies (ZONCOMMUNI_id) du plan cadastral vecteur EDIGEO (cadastre.data.gouv.fr), pour toutes les sections cadastrales de la commune. Le nom de voie, historiquement fragmenté sur plusieurs champs (TEX, TEX2...TEX10) dans le format EDIGEO, est reconstitué en un seul attribut nom avant l'ajout au projet. La couche est mise en cache dans le GeoPackage local (edigeo_voies), en Lambert-93 (EPSG:2154, le CRS natif du plan cadastral vecteur). Nouveau module edigeo_loader.py (mixin EdigeoLoaderMixin) et nouvelle méthode de style apply_edigeo_voies_style dans styles.py.
 homepage=https://github.com/votre-username/voirie_communale
 category=Plugins
 icon=icon.png
