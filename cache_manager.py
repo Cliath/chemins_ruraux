@@ -5,10 +5,19 @@ Copyright (C) 2026 Yann Schwarz <yann.schwarz@gmail.com>
 Licence : GNU GPL v2+
 """
 import os
+import sqlite3
 import time
 
 from qgis.core import (QgsVectorLayer, QgsVectorFileWriter, QgsProject,
                         QgsMessageLog, Qgis, QgsApplication, QgsDataProvider)
+
+from .version import __version__ as PLUGIN_VERSION
+
+# Table de métadonnées non spatiale ajoutée dans chaque GeoPackage de cache,
+# retenant la version du plugin ayant écrit chaque couche. Un GeoPackage
+# n'étant qu'un fichier SQLite, elle est gérée directement en SQL plutôt
+# qu'avec l'API QGIS (pas de géométrie à stocker ici).
+CACHE_META_TABLE = "_voirie_cache_meta"
 
 
 class CacheManagerMixin:
@@ -55,6 +64,48 @@ class CacheManagerMixin:
             return None
         return (time.time() - mtime) / 86400.0
 
+    def _cache_meta_get_version(self, path, layer_key):
+        """Retourne la version du plugin ayant écrit `layer_key` dans le GeoPackage
+        `path`, ou None si absente/table inexistante (cache d'une version antérieure
+        à ce mécanisme, ou couche jamais enregistrée)."""
+        if not os.path.isfile(path):
+            return None
+        try:
+            with sqlite3.connect(path) as conn:
+                cur = conn.execute(
+                    f"SELECT plugin_version FROM {CACHE_META_TABLE} WHERE layer_key = ?",
+                    (layer_key,)
+                )
+                row = cur.fetchone()
+                return row[0] if row else None
+        except sqlite3.Error:
+            # Table absente (ancien cache) ou fichier non-SQLite valide : pas bloquant.
+            return None
+
+    def _cache_meta_set_version(self, path, layer_key):
+        """Enregistre la version courante du plugin pour `layer_key` dans le
+        GeoPackage `path`. Best-effort : ne doit jamais faire échouer l'écriture
+        du cache elle-même."""
+        try:
+            with sqlite3.connect(path) as conn:
+                conn.execute(
+                    f"CREATE TABLE IF NOT EXISTS {CACHE_META_TABLE} "
+                    "(layer_key TEXT PRIMARY KEY, plugin_version TEXT, saved_at REAL)"
+                )
+                conn.execute(
+                    f"INSERT INTO {CACHE_META_TABLE} (layer_key, plugin_version, saved_at) "
+                    "VALUES (?, ?, ?) "
+                    "ON CONFLICT(layer_key) DO UPDATE SET plugin_version=excluded.plugin_version, "
+                    "saved_at=excluded.saved_at",
+                    (layer_key, PLUGIN_VERSION, time.time())
+                )
+                conn.commit()
+        except sqlite3.Error as exc:
+            QgsMessageLog.logMessage(
+                f"Cache : impossible d'enregistrer la version du cache pour {layer_key} : {exc}",
+                "VoirieCommunale", Qgis.Warning
+            )
+
     def _load_layer_from_cache(self, code_insee, layer_key, display_name):
         """Tente de charger `layer_key` depuis le GeoPackage de cache de `code_insee`.
 
@@ -64,11 +115,27 @@ class CacheManagerMixin:
             display_name: nom d'affichage à donner à la couche QGIS chargée
 
         Returns:
-            QgsVectorLayer valide (nommée display_name) ou None si absente/invalide.
+            QgsVectorLayer valide (nommée display_name) ou None si absente/invalide
+            ou si elle a été écrite par une version antérieure du plugin (le cache
+            est alors considéré comme potentiellement obsolète et ignoré, afin de
+            ne jamais servir des données figées par un bug corrigé depuis).
         """
         path = self._cache_gpkg_path(code_insee)
         if not os.path.isfile(path):
             return None
+
+        cached_version = self._cache_meta_get_version(path, layer_key)
+        if cached_version is not None and cached_version != PLUGIN_VERSION:
+            QgsMessageLog.logMessage(
+                f"Cache : {display_name} ignorée (écrite par la version {cached_version}, "
+                f"plugin actuel {PLUGIN_VERSION}) — retéléchargement automatique",
+                "VoirieCommunale", Qgis.Info
+            )
+            if not hasattr(self, '_cache_version_invalidations'):
+                self._cache_version_invalidations = []
+            self._cache_version_invalidations.append(display_name)
+            return None
+
         uri = f"{path}|layername={layer_key}"
         layer = QgsVectorLayer(uri, display_name, "ogr")
         if not layer.isValid() or layer.featureCount() == 0:
@@ -122,6 +189,8 @@ class CacheManagerMixin:
                 "VoirieCommunale", Qgis.Warning
             )
             return False
+
+        self._cache_meta_set_version(path, layer_key)
 
         QgsMessageLog.logMessage(
             f"Cache : {layer_key} enregistrée dans {os.path.basename(path)}",

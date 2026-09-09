@@ -1,3 +1,8 @@
+# [0.20.1] - 2026-09-09
+### Ajouté
+- **Cache invalidé automatiquement après mise à jour du plugin** : chaque couche mise en cache (GeoPackage) enregistre désormais la version du plugin qui l'a écrite. Si le plugin a été mis à jour depuis, le cache correspondant est ignoré et les données sont retéléchargées automatiquement — au lieu de continuer à servir silencieusement des données figées par un bug corrigé depuis (comme observé pour MAJIC sur des communes déjà mises en cache avant la v0.20.0). Un message d'information récapitule les couches concernées dans ce cas. La note des paramètres (« Cache local des couches par commune ») a été mise à jour en conséquence.
+- **Retour de progression pendant les téléchargements volumineux en un seul fichier** (Filaires de voie BAL : export national ~100 Mo, Voies EDIGEO cadastre : archive ZIP par sections) : la barre de progression affiche désormais le volume téléchargé (et le pourcentage si connu) en temps réel au lieu d'un message statique unique pendant toute l'opération, ainsi que l'avancement section par section pour EDIGEO.
+
 # [0.20.0] - 2026-08-07
 ### Corrigé
 - **Chargement des parcelles MAJIC** : sur les communes volumineuses (ex. 05001 Abriès-Ristolas : 6327 parcelles MAJIC sur 24989 parcelles cadastrales au total), le chargement pouvait sembler figé plusieurs minutes sans aucun retour visuel. Deux causes corrigées :

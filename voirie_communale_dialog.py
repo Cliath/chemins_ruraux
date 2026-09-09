@@ -329,8 +329,11 @@ class SettingsDialog(QDialog):
         note_cache = QLabel(
             "<small><i>Les données par commune (BAN, MAJIC, Filaires BAL, Voirie DGCL, "
             "OSM Routes, MagOSM, BD TOPO...) sont mises en cache localement (GeoPackage) "
-            "pour éviter de retélécharger à chaque ouverture. Utilisez le bouton "
-            "« Forcer le rechargement » pour ignorer le cache et retélécharger.</i></small>"
+            "pour éviter de retélécharger à chaque ouverture. Le cache d'une commune est "
+            "automatiquement retéléchargé après une mise à jour du plugin (pour ne jamais "
+            "réutiliser des données figées par un bug corrigé depuis). Utilisez le bouton "
+            "« Forcer le rechargement » pour ignorer le cache et retélécharger à tout "
+            "moment.</i></small>"
         )
         note_cache.setWordWrap(True)
         lay_general.addWidget(note_cache)

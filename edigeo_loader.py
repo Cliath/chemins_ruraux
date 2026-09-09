@@ -20,7 +20,6 @@ import io
 import os
 import tarfile
 import urllib.error
-import urllib.request
 import zipfile
 
 from qgis.core import (QgsFeature, QgsGeometry, QgsMessageLog, Qgis,
@@ -56,7 +55,7 @@ class EdigeoLoaderMixin:
                     parts.append(str(value).strip())
         return ' '.join(parts)
 
-    def load_edigeo_voies(self, code_insee, regex_chemin=None, regex_voie=None):
+    def load_edigeo_voies(self, code_insee, regex_chemin=None, regex_voie=None, progress_cb=None):
         """Télécharge et fusionne la couche EDIGEO ZONCOMMUNI_id (voies, lignes)
         pour toutes les sections cadastrales d'une commune.
 
@@ -66,22 +65,31 @@ class EdigeoLoaderMixin:
                 (transmise à apply_edigeo_voies_style ; défaut de la méthode si None)
             regex_voie: Expression régulière QGIS pour détecter les voies communales
                 (transmise à apply_edigeo_voies_style ; défaut de la méthode si None)
+            progress_cb: Callback optionnel appelé avec un message de progression
+                (str) pendant le téléchargement de l'archive puis le traitement
+                des sections cadastrales.
 
         Returns:
             tuple: (bool succès, QgsVectorLayer voies ou None, bool aucune_donnee)
         """
         from osgeo import gdal, ogr
 
+        def _report(msg):
+            if progress_cb:
+                progress_cb(msg)
+
         url = self.EDIGEO_BASE_URL.format(code_insee=code_insee)
         QgsMessageLog.logMessage(
             f"EDIGEO : téléchargement du plan cadastral vecteur pour {code_insee}",
             "VoirieCommunale", Qgis.Info
         )
+        _report(f"Voies EDIGEO ({code_insee}) : téléchargement de l'archive cadastrale...")
 
         try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'QGIS-VoirieCommunale/1.0'})
-            with urllib.request.urlopen(req, timeout=180) as response:
-                zip_bytes = response.read()
+            zip_bytes = self._download_with_progress(
+                url, progress_cb=progress_cb, timeout=180,
+                label=f"Voies EDIGEO ({code_insee})"
+            )
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 QgsMessageLog.logMessage(
@@ -111,8 +119,10 @@ class EdigeoLoaderMixin:
 
         voies_features = []   # (QgsGeometry, nom)
         vsimem_dir = f"/vsimem/edigeo_{code_insee}"
+        total_sections = len(section_members)
 
-        for member_name in section_members:
+        for i, member_name in enumerate(section_members, start=1):
+            _report(f"Voies EDIGEO ({code_insee}) : traitement section {i}/{total_sections}...")
             try:
                 tar_bytes = zf.read(member_name)
                 tf = tarfile.open(fileobj=io.BytesIO(tar_bytes), mode='r:bz2')

@@ -58,6 +58,63 @@ class WfsLoadTask(QgsTask):
 class WfsLoaderMixin:
     """Regroupe les methodes de telechargement et de construction des couches (WFS/WMS/XYZ)."""
 
+    @staticmethod
+    def _download_with_progress(url, progress_cb=None, timeout=120, label="Téléchargement",
+                                 chunk_size=262144, headers=None):
+        """Télécharge une URL en streaming, avec retour de progression périodique.
+
+        Contrairement à un `response.read()` unique, la réponse est lue par blocs
+        de `chunk_size` octets, ce qui permet de signaler à `progress_cb` le
+        volume déjà téléchargé (et le pourcentage si le serveur fournit
+        Content-Length) pendant toute la durée du transfert. Utilisé pour les
+        téléchargements volumineux en un seul fichier (export national BAL,
+        archive EDIGEO) qui bloqueraient sinon l'interface plusieurs dizaines de
+        secondes sans aucun signe de vie.
+
+        Args:
+            url: URL à télécharger (GET simple)
+            progress_cb: callback optionnel appelé avec un message (str)
+            timeout: délai d'expiration de la requête, en secondes
+            label: préfixe du message de progression (ex. "Filaires BAL")
+            chunk_size: taille des blocs de lecture, en octets
+            headers: en-têtes HTTP additionnels (fusionnés avec le User-Agent par défaut)
+
+        Returns:
+            bytes: le contenu complet téléchargé.
+
+        Raises:
+            urllib.error.URLError, OSError: propagées telles quelles à l'appelant
+                en cas d'échec réseau, à charge pour lui de les traiter.
+        """
+        req_headers = {'User-Agent': 'QGIS-VoirieCommunale/1.0'}
+        if headers:
+            req_headers.update(headers)
+        req = urllib.request.Request(url, headers=req_headers)
+
+        chunks = []
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            content_length = response.headers.get('Content-Length')
+            total = int(content_length) if content_length and content_length.isdigit() else None
+            downloaded = 0
+            last_reported_mb = -1
+            while True:
+                chunk = response.read(chunk_size)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                downloaded += len(chunk)
+                if progress_cb:
+                    mb = downloaded // (1024 * 1024)
+                    if mb != last_reported_mb:  # limite la fréquence des mises à jour de l'UI
+                        last_reported_mb = mb
+                        if total:
+                            pct = min(100, int(downloaded * 100 / total))
+                            total_mb = total // (1024 * 1024)
+                            progress_cb(f"{label} : {mb} Mo / {total_mb} Mo ({pct}%)...")
+                        else:
+                            progress_cb(f"{label} : {mb} Mo téléchargé(s)...")
+        return b"".join(chunks)
+
     def load_xyz_tile_layer(self, url, display_name, zmin=0, zmax=19):
         """Charge une couche de tuiles XYZ.
 
@@ -988,7 +1045,7 @@ class WfsLoaderMixin:
     # URL de l'export national des filaires de voie des Bases Adresses Locales (BAL)
     FILAIRES_BAL_URL = "https://base-adresse-locale-prod-filaires-de-voie.s3.fr-par.scw.cloud/export-filaires-de-voie.json"
 
-    def load_filaires_bal(self, code_insee):
+    def load_filaires_bal(self, code_insee, progress_cb=None):
         """Charge les filaires de voie des Bases Adresses Locales (BAL) pour une commune.
 
         L'export est un unique GeoJSON national (~100 Mo) sans filtre serveur possible :
@@ -997,6 +1054,8 @@ class WfsLoaderMixin:
 
         Args:
             code_insee: Code INSEE de la commune (5 caractères)
+            progress_cb: Callback optionnel appelé avec un message de progression
+                         (str) pendant le téléchargement du fichier national.
 
         Returns:
             tuple: (bool, QgsVectorLayer ou None, bool) - (succès, couche chargée, aucune_donnee)
@@ -1010,12 +1069,17 @@ class WfsLoaderMixin:
             "VoirieCommunale", Qgis.Info
         )
 
+        if progress_cb:
+            progress_cb("Filaires de voie BAL : téléchargement de l'export national (~100 Mo)...")
+
         try:
-            req = urllib.request.Request(
-                self.FILAIRES_BAL_URL, headers={'User-Agent': 'QGIS-VoirieCommunale/1.0'}
+            raw = self._download_with_progress(
+                self.FILAIRES_BAL_URL, progress_cb=progress_cb, timeout=120,
+                label="Filaires de voie BAL"
             )
-            with urllib.request.urlopen(req, timeout=120) as response:
-                data = json.loads(response.read().decode('utf-8'))
+            if progress_cb:
+                progress_cb("Filaires de voie BAL : analyse du fichier téléchargé...")
+            data = json.loads(raw.decode('utf-8'))
         except (urllib.error.URLError, OSError, json.JSONDecodeError) as e:
             QgsMessageLog.logMessage(
                 f"Filaires de voie BAL : erreur de téléchargement/parsing : {e}",

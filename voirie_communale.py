@@ -349,6 +349,7 @@ class VoirieCommunale(LayerOrderMixin, WfsLoaderMixin, StylesMixin, CacheManager
         # Indépendant du BBOX communal (celui-ci n'est pas encore connu à ce stade).
         # Ignoré entièrement si force_refresh (bouton "Forcer le rechargement").
         cache_hits = {}  # layer_key -> QgsVectorLayer chargée depuis le cache
+        self._cache_version_invalidations = []  # rempli par _load_layer_from_cache si obsolète
         if not force_refresh:
             for key, checked, layer_name in [
                 ('commune',               commune_checked and not commune_reuse, f"Commune {code_insee}"),
@@ -367,6 +368,15 @@ class VoirieCommunale(LayerOrderMixin, WfsLoaderMixin, StylesMixin, CacheManager
                     cached = self._load_layer_from_cache(code_insee, key, layer_name)
                     if cached:
                         cache_hits[key] = cached
+
+        if self._cache_version_invalidations:
+            deferred_warnings.append((
+                "Cache mis à jour automatiquement",
+                "Le plugin Voirie Communale a été mis à jour depuis le dernier chargement de "
+                "cette commune : les données suivantes ont donc été retéléchargées "
+                "automatiquement plutôt que de réutiliser un cache potentiellement obsolète :\n\n"
+                + "\n".join(f"• {name}" for name in self._cache_version_invalidations)
+            ))
 
         if cache_hits:
             cache_age = self._cache_age_days(code_insee)
@@ -713,7 +723,7 @@ class VoirieCommunale(LayerOrderMixin, WfsLoaderMixin, StylesMixin, CacheManager
                 loaded_layers.append(filaires_bal_layer)
             else:
                 advance(f"Chargement des filaires de voie BAL ({code_insee})...")
-                filaires_bal_success, filaires_bal_layer, filaires_bal_no_data = self.load_filaires_bal(code_insee)
+                filaires_bal_success, filaires_bal_layer, filaires_bal_no_data = self.load_filaires_bal(code_insee, progress_cb=update_label)
                 results.append(('Filaires de voie BAL', filaires_bal_success))
                 if filaires_bal_layer:
                     if self._save_layer_to_cache(code_insee, 'filaires_bal', filaires_bal_layer):
@@ -746,7 +756,7 @@ class VoirieCommunale(LayerOrderMixin, WfsLoaderMixin, StylesMixin, CacheManager
             else:
                 advance(f"Chargement des voies EDIGEO (cadastre) ({code_insee})...")
                 edigeo_success, edigeo_voies_layer, edigeo_no_data = self.load_edigeo_voies(
-                    code_insee, regex_chemin=regex_chemin, regex_voie=regex_voie
+                    code_insee, regex_chemin=regex_chemin, regex_voie=regex_voie, progress_cb=update_label
                 )
                 results.append(('Voies EDIGEO (cadastre)', edigeo_success))
                 if edigeo_voies_layer:
