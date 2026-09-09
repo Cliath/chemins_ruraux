@@ -1,3 +1,10 @@
+# [0.20.2] - 2026-09-09
+### Corrigé
+- **Chargement des parcelles MAJIC : abandon complet à la première erreur réseau**. En observant la commune 05003, le serveur WFS IGN (data.geopf.fr) s'est révélé ponctuellement instable sur certains lots de la requête filtrée par idu (introduite en v0.20.0), avec des dépassements de délai (timeout) sur 1 ou 2 lots parmi une quinzaine. Le code interrompait alors tout le chargement dès la première erreur, même après avoir déjà récupéré la quasi-totalité des données — c'est ce qui donnait l'impression que « ça ne marche toujours pas » malgré le correctif précédent. Désormais :
+  - Chaque lot est retenté jusqu'à 3 fois (avec un court délai entre essais) avant d'être considéré en échec.
+  - Si un lot reste en échec après ses 3 essais, seules les quelques parcelles de ce lot sont manquantes — le chargement se poursuit et aboutit avec le reste des données, au lieu d'échouer intégralement.
+  - Un message d'avertissement récapitule le nombre de lots concernés en fin de traitement, avec une invitation à réessayer via « Forcer le rechargement » si besoin.
+
 # [0.20.1] - 2026-09-09
 ### Ajouté
 - **Cache invalidé automatiquement après mise à jour du plugin** : chaque couche mise en cache (GeoPackage) enregistre désormais la version du plugin qui l'a écrite. Si le plugin a été mis à jour depuis, le cache correspondant est ignoré et les données sont retéléchargées automatiquement — au lieu de continuer à servir silencieusement des données figées par un bug corrigé depuis (comme observé pour MAJIC sur des communes déjà mises en cache avant la v0.20.0). Un message d'information récapitule les couches concernées dans ce cas. La note des paramètres (« Cache local des couches par commune ») a été mise à jour en conséquence.

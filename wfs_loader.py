@@ -10,6 +10,7 @@ objets QGIS), et les methodes de chargement haut niveau de chaque source de
 donnees (BAN, BD TOPO, OSM, MagOSM, MAJIC, cadastre, WMS historiques, etc.).
 """
 import json
+import time
 import urllib.parse
 import urllib.request
 import urllib.error
@@ -907,48 +908,92 @@ class WfsLoaderMixin:
 
         WFS_URL = "https://data.geopf.fr/wfs"
         CHUNK_SIZE = 300  # nb de codes idu par requête (URL raisonnable, largement < COUNT max)
+        MAX_ATTEMPTS = 3  # le WFS IGN peut être ponctuellement lent/instable sur certains lots
+        RETRY_DELAY_S = 3
 
         majic_codes = list(majic_by_parcelle.keys())
         chunks = [majic_codes[i:i + CHUNK_SIZE] for i in range(0, len(majic_codes), CHUNK_SIZE)]
         total_chunks = len(chunks)
 
         wfs_features = []
+        failed_chunks = 0  # lots définitivement en échec après tous les essais (dégradation gracieuse)
 
-        try:
-            for i, chunk in enumerate(chunks, start=1):
-                _report(f"Parcelles MAJIC ({code_insee}) : géométries WFS (lot {i}/{total_chunks})...")
-                idu_list = ",".join(f"'{c}'" for c in chunk)
-                params = {
-                    'SERVICE': 'WFS',
-                    'VERSION': '2.0.0',
-                    'REQUEST': 'GetFeature',
-                    'TYPENAMES': 'CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle',
-                    'CQL_FILTER': f"code_dep='{code_dep}' AND code_com='{code_com}' AND idu IN ({idu_list})",
-                    'OUTPUTFORMAT': 'application/json',
-                    'COUNT': CHUNK_SIZE,
-                }
-                url = f"{WFS_URL}?{urllib.parse.urlencode(params)}"
+        for i, chunk in enumerate(chunks, start=1):
+            idu_list = ",".join(f"'{c}'" for c in chunk)
+            params = {
+                'SERVICE': 'WFS',
+                'VERSION': '2.0.0',
+                'REQUEST': 'GetFeature',
+                'TYPENAMES': 'CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle',
+                'CQL_FILTER': f"code_dep='{code_dep}' AND code_com='{code_com}' AND idu IN ({idu_list})",
+                'OUTPUTFORMAT': 'application/json',
+                'COUNT': CHUNK_SIZE,
+            }
+            url = f"{WFS_URL}?{urllib.parse.urlencode(params)}"
+
+            fc = None
+            last_error = None
+            for attempt in range(1, MAX_ATTEMPTS + 1):
+                suffix = f" (essai {attempt}/{MAX_ATTEMPTS})" if attempt > 1 else ""
+                _report(f"Parcelles MAJIC ({code_insee}) : géométries WFS (lot {i}/{total_chunks}){suffix}...")
+                try:
+                    req = urllib.request.Request(
+                        url, headers={'User-Agent': 'QGIS-VoirieCommunale/1.0'}
+                    )
+                    with urllib.request.urlopen(req, timeout=60) as response:
+                        fc = json.loads(response.read().decode('utf-8'))
+                    break
+                except (urllib.error.URLError, OSError, json.JSONDecodeError) as e:
+                    last_error = e
+                    QgsMessageLog.logMessage(
+                        f"MAJIC WFS lot {i}/{total_chunks} : échec essai {attempt}/{MAX_ATTEMPTS} : {e}",
+                        "VoirieCommunale", Qgis.Warning
+                    )
+                    if attempt < MAX_ATTEMPTS:
+                        time.sleep(RETRY_DELAY_S)
+
+            if fc is None:
+                # Lot définitivement perdu après tous les essais : on ne perd pas tout
+                # le chargement pour autant, seules ces quelques parcelles manqueront
+                # (signalé à l'utilisateur en fin de traitement).
+                failed_chunks += 1
                 QgsMessageLog.logMessage(
-                    f"MAJIC WFS parcelles (lot {i}/{total_chunks}, {len(chunk)} idu) : {url}",
-                    "VoirieCommunale", Qgis.Info
+                    f"MAJIC WFS lot {i}/{total_chunks} : abandonné après {MAX_ATTEMPTS} essais ({last_error}), "
+                    f"{len(chunk)} parcelle(s) ne seront pas géolocalisées",
+                    "VoirieCommunale", Qgis.Critical
                 )
-                req = urllib.request.Request(
-                    url, headers={'User-Agent': 'QGIS-VoirieCommunale/1.0'}
-                )
-                with urllib.request.urlopen(req, timeout=60) as response:
-                    fc = json.loads(response.read().decode('utf-8'))
+                continue
 
-                wfs_features.extend(fc.get('features', []))
+            wfs_features.extend(fc.get('features', []))
 
-        except (urllib.error.URLError, OSError, json.JSONDecodeError) as e:
+        if failed_chunks:
+            _report(
+                f"Parcelles MAJIC ({code_insee}) : {failed_chunks} lot(s) sur {total_chunks} "
+                "n'ont pas pu être récupérés (instabilité réseau)..."
+            )
+            # Signalé au code appelant (voirie_communale.py) pour afficher un avertissement
+            # après la fermeture de la barre de progression, sans bloquer le chargement.
+            self._majic_partial_failure_msg = (
+                f"Le WFS IGN a été instable pendant le chargement des parcelles MAJIC de "
+                f"{code_insee} : {failed_chunks} lot(s) sur {total_chunks} n'ont pas pu être "
+                "récupérés malgré plusieurs tentatives. Certaines parcelles ne sont donc pas "
+                "affichées sur la carte, bien que présentes dans les données MAJIC.\n\n"
+                "Vous pouvez réessayer (« Forcer le rechargement ») pour tenter de récupérer "
+                "les lots manquants."
+            )
+        else:
+            self._majic_partial_failure_msg = None
+
+        if not wfs_features:
             QgsMessageLog.logMessage(
-                f"MAJIC : erreur WFS IGN parcelles : {e}",
+                f"MAJIC : aucune géométrie WFS récupérée pour {code_insee}",
                 "VoirieCommunale", Qgis.Critical
             )
             return False, None
 
         QgsMessageLog.logMessage(
-            f"MAJIC : {len(wfs_features)} polygones WFS chargés pour {code_insee}",
+            f"MAJIC : {len(wfs_features)} polygones WFS chargés pour {code_insee}"
+            + (f" ({failed_chunks} lot(s) sur {total_chunks} en échec)" if failed_chunks else ""),
             "VoirieCommunale", Qgis.Info
         )
 

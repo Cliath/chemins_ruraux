@@ -712,6 +712,9 @@ class VoirieCommunale(LayerOrderMixin, WfsLoaderMixin, StylesMixin, CacheManager
                         "Impossible de charger les parcelles MAJIC pour la commune sélectionnée.\n\n"
                         "Vérifiez la connexion internet, le code INSEE, ou consultez le journal des messages pour plus de détails."
                     ))
+                if getattr(self, '_majic_partial_failure_msg', None):
+                    deferred_warnings.append(("Chargement MAJIC incomplet", self._majic_partial_failure_msg))
+                    self._majic_partial_failure_msg = None
 
         if filaires_bal_checked:
             if 'filaires_bal' in cache_hits:
