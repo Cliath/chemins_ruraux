@@ -739,21 +739,32 @@ class WfsLoaderMixin:
         return success, layer
     
 
-    def load_majic_parcelles(self, code_insee):
+    def load_majic_parcelles(self, code_insee, progress_cb=None):
         """Charge les parcelles des personnes morales (MAJIC) sous forme de polygones.
 
         Stratégie en deux étapes :
         1. Récupère les attributs MAJIC depuis l'API Koumoul (DGFiP) pour la commune.
-        2. Charge les polygones de parcelles depuis le WFS IGN Géoplateforme
-           (CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle), filtrés par commune.
+        2. Charge les géométries des parcelles correspondantes depuis le WFS IGN
+           Géoplateforme (CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle), en filtrant
+           directement par identifiant de parcelle (idu IN (...)) par lots, plutôt que
+           de télécharger l'intégralité des parcelles de la commune : pour une commune
+           étendue (ex. commune de montagne), le cadastre total peut compter plusieurs
+           dizaines de milliers de parcelles alors que seule une fraction est concernée
+           par MAJIC, d'où un gain important de volume transféré et de temps de calcul.
         3. Crée une couche polygone mémoire avec uniquement les parcelles MAJIC.
 
         Args:
             code_insee: Code INSEE de la commune (5 caractères)
+            progress_cb: Callback optionnel appelé avec un message de progression
+                         (str) à chaque page/lot téléchargé, pour informer l'utilisateur
+                         pendant les deux phases (Koumoul, puis WFS).
 
         Returns:
             tuple: (bool, QgsVectorLayer ou None)
         """
+        def _report(msg):
+            if progress_cb:
+                progress_cb(msg)
 
         # ── Étape 1 : attributs MAJIC depuis Koumoul ──────────────────────────
         BASE_URL = "https://koumoul.com/data-fair/api/v1/datasets/parcelles-des-personnes-morales/lines"
@@ -771,9 +782,12 @@ class WfsLoaderMixin:
         majic_by_parcelle = {}
         size = 1000
         after = None
+        koumoul_page = 0
 
         try:
             while True:
+                koumoul_page += 1
+                _report(f"Parcelles MAJIC ({code_insee}) : lecture des attributs (page {koumoul_page})...")
                 params = {
                     'qs': f'code_commune:{code_insee}',
                     'size': size,
@@ -824,7 +838,7 @@ class WfsLoaderMixin:
             "VoirieCommunale", Qgis.Info
         )
 
-        # ── Étape 2 : polygones depuis le WFS IGN ─────────────────────────────
+        # ── Étape 2 : géométries depuis le WFS IGN, filtrées par lots d'idu ───
         # Extraire code_dep et code_com selon le format du code INSEE
         import re as _re
         if _re.match(r'97[1-6]', code_insee):
@@ -835,26 +849,30 @@ class WfsLoaderMixin:
             code_com = code_insee[2:]
 
         WFS_URL = "https://data.geopf.fr/wfs"
-        wfs_params_base = {
-            'SERVICE': 'WFS',
-            'VERSION': '2.0.0',
-            'REQUEST': 'GetFeature',
-            'TYPENAMES': 'CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle',
-            'CQL_FILTER': f"code_dep='{code_dep}' AND code_com='{code_com}'",
-            'OUTPUTFORMAT': 'application/json',
-            'COUNT': 1000
-        }
+        CHUNK_SIZE = 300  # nb de codes idu par requête (URL raisonnable, largement < COUNT max)
+
+        majic_codes = list(majic_by_parcelle.keys())
+        chunks = [majic_codes[i:i + CHUNK_SIZE] for i in range(0, len(majic_codes), CHUNK_SIZE)]
+        total_chunks = len(chunks)
 
         wfs_features = []
-        start_index = 0
 
         try:
-            while True:
-                params = dict(wfs_params_base)
-                params['STARTINDEX'] = start_index
+            for i, chunk in enumerate(chunks, start=1):
+                _report(f"Parcelles MAJIC ({code_insee}) : géométries WFS (lot {i}/{total_chunks})...")
+                idu_list = ",".join(f"'{c}'" for c in chunk)
+                params = {
+                    'SERVICE': 'WFS',
+                    'VERSION': '2.0.0',
+                    'REQUEST': 'GetFeature',
+                    'TYPENAMES': 'CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle',
+                    'CQL_FILTER': f"code_dep='{code_dep}' AND code_com='{code_com}' AND idu IN ({idu_list})",
+                    'OUTPUTFORMAT': 'application/json',
+                    'COUNT': CHUNK_SIZE,
+                }
                 url = f"{WFS_URL}?{urllib.parse.urlencode(params)}"
                 QgsMessageLog.logMessage(
-                    f"MAJIC WFS parcelles (startIndex={start_index}) : {url}",
+                    f"MAJIC WFS parcelles (lot {i}/{total_chunks}, {len(chunk)} idu) : {url}",
                     "VoirieCommunale", Qgis.Info
                 )
                 req = urllib.request.Request(
@@ -863,11 +881,7 @@ class WfsLoaderMixin:
                 with urllib.request.urlopen(req, timeout=60) as response:
                     fc = json.loads(response.read().decode('utf-8'))
 
-                batch = fc.get('features', [])
-                wfs_features.extend(batch)
-                if len(batch) < 1000:
-                    break
-                start_index += 1000
+                wfs_features.extend(fc.get('features', []))
 
         except (urllib.error.URLError, OSError, json.JSONDecodeError) as e:
             QgsMessageLog.logMessage(

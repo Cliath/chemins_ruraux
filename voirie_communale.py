@@ -439,6 +439,13 @@ class VoirieCommunale(LayerOrderMixin, WfsLoaderMixin, StylesMixin, CacheManager
             progress.setValue(current_step)
             QApplication.processEvents()
 
+        def update_label(label):
+            """Met à jour le texte de la barre de progression sans avancer le compteur
+            d'étapes (utilisé pour le feedback intermédiaire des opérations longues
+            à pagination multiple, ex. chargement MAJIC page par page)."""
+            progress.setLabelText(label)
+            QApplication.processEvents()
+
         if cadastre_checked:
             advance(f"Chargement du cadastre ({code_insee})...")
             cadastre_success, cadastre_layers = self.load_cadastre_wms(code_insee)
@@ -681,7 +688,7 @@ class VoirieCommunale(LayerOrderMixin, WfsLoaderMixin, StylesMixin, CacheManager
                 loaded_layers.append(majic_layer)
             else:
                 advance(f"Chargement des parcelles MAJIC ({code_insee})...")
-                majic_success, majic_layer = self.load_majic_parcelles(code_insee)
+                majic_success, majic_layer = self.load_majic_parcelles(code_insee, progress_cb=update_label)
                 results.append(('Parcelles MAJIC', majic_success))
                 if majic_layer:
                     if self._save_layer_to_cache(code_insee, 'majic', majic_layer):

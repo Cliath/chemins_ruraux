@@ -1,3 +1,9 @@
+# [0.20.0] - 2026-08-07
+### Corrigé
+- **Chargement des parcelles MAJIC** : sur les communes volumineuses (ex. 05001 Abriès-Ristolas : 6327 parcelles MAJIC sur 24989 parcelles cadastrales au total), le chargement pouvait sembler figé plusieurs minutes sans aucun retour visuel. Deux causes corrigées :
+  - **Filtrage WFS ciblé par IDU** : le WFS IGN était auparavant paginé pour récupérer **toute la commune** avant de ne garder que les parcelles MAJIC correspondantes. Il est désormais interrogé par lots de 300 codes `idu` (filtre `CQL_FILTER ... AND idu IN (...)`), ne téléchargeant que les géométries réellement nécessaires.
+  - **Feedback de progression en direct** : la barre de progression affiche désormais l'avancement page par page (attributs Koumoul) puis lot par lot (géométries WFS), au lieu d'un message statique unique pendant toute l'opération.
+
 # [0.19.0] - 2026-08-06
 ### Nettoyé
 - **Code mort massif retiré** suite à une revue complète du code (aucun changement de comportement) :

@@ -3,7 +3,7 @@ name=Voirie Communale
 qgisMinimumVersion=3.0
 tags=voirie,commune,chemin rural,voie communale,cadastre,BAN,OSM,IGN
 description=Plugin d'aide pour le recensement de la voirie communale (voies communales et chemins ruraux)
-version=0.19.0
+version=0.20.0
 author=Yann Schwarz
 email=yann.schwarz@gmail.com
 
@@ -17,7 +17,11 @@ repository=https://github.com/Cliath/voirie_communale
 
 # Recommended items:
 hasProcessingProvider=no
-changelog=    Version 0.19.0 (2026-08-06)
+changelog=    Version 0.20.0 (2026-08-07)
+    - Chargement des parcelles MAJIC : sur les communes volumineuses (ex. 05001 Abriès-Ristolas : 6327 parcelles MAJIC sur 24989 parcelles cadastrales au total), le chargement pouvait sembler figé plusieurs minutes sans aucun retour visuel. Deux causes corrigées :
+    - Filtrage WFS ciblé par IDU : le WFS IGN était auparavant paginé pour récupérer toute la commune avant de ne garder que les parcelles MAJIC correspondantes. Il est désormais interrogé par lots de 300 codes idu (filtre CQL_FILTER ... AND idu IN (...)), ne téléchargeant que les géométries réellement nécessaires.
+    - Feedback de progression en direct : la barre de progression affiche désormais l'avancement page par page (attributs Koumoul) puis lot par lot (géométries WFS), au lieu d'un message statique unique pendant toute l'opération.
+    Version 0.19.0 (2026-08-06)
     - Code mort massif retiré suite à une revue complète du code (aucun changement de comportement) :
     - wfs_loader.py (1519 -> 1064 lignes) : suppression de 8 méthodes jamais appelées, restes de l'ancienne architecture de chargement synchrone remplacée depuis par le chargement parallèle asynchrone (WfsLoadTask + _fetch_*_to_vsimem) : load_bdtopo_troncons_wfs, load_bdtopo_routesnom_wfs, load_wms_epsg3857, load_ban_wfs, load_voirie_wfs, load_voirie_dep_wfs, load_osm_roads, load_magosm_wfs. La branche bbox de load_wfs_layer (devenue inatteignable, plus aucun appelant vivant ne fournissant de bbox) ainsi que la méthode _load_wfs_bbox ont également été retirées ; seul le chemin code_insee (utilisé par load_commune_wfs) est conservé.
     - styles.py (668 -> 517 lignes) : suppression du dictionnaire MAJIC_FORMES_JURIDIQUES (110 lignes, jamais référencé ailleurs — seul MAJIC_GROUPES sert réellement au rendu) et de la constante _MAJIC_COLOR_UNKNOWN inutilisée. Extraction de deux méthodes partagées (_make_line_symbol, _apply_simple_line_labels) pour éliminer la duplication du helper make_line et du bloc d'étiquetage répétés à l'identique dans _apply_bdtopo_troncons_style, _apply_magosm_style et apply_edigeo_voies_style.
@@ -41,8 +45,6 @@ changelog=    Version 0.19.0 (2026-08-06)
     - Cache : la couche MAJIC chargée depuis le cache local GeoPackage conservait bien son style (v0.17.3), mais uniquement dans le cas d'un cache-miss (premier téléchargement) : la logique d'application du rendu catégorisé (par groupe_personne) n'était appelée que juste après le téléchargement Koumoul/WFS. Lors d'un chargement direct depuis le cache d'une session précédente (cas le plus fréquent), la couche gardait le style aléatoire par défaut de QGIS. La logique de style a été extraite en une méthode réutilisable (apply_majic_style) reconstruisant les catégories à partir des valeurs groupe_personne déjà présentes dans la couche, appelée aussi bien après téléchargement qu'après un chargement depuis le cache.
     Version 0.17.3 (2026-08-02)
     - Cache : la correction précédente (v0.17.2) recréait une nouvelle couche depuis le GeoPackage et ne recopiait que le renderer et l'opacité, perdant les autres aspects du style (étiquettes, mode de fusion, jointures...). La bascule vers le cache utilise désormais QgsVectorLayer.setDataSource() sur la couche existante : le style est conservé intégralement puisqu'il s'agit du même objet couche (même id, même renderer, mêmes labels), seule la source de données change de memory vers le fichier GeoPackage.
-    Version 0.17.2 (2026-08-02)
-    - Cache : la couche MAJIC (et Filaires de voie BAL) apparaissait comme « couche temporaire » dans QGIS lors d'un premier téléchargement (ou après « Forcer le rechargement »), car elle était construite avec le provider memory. Après écriture réussie dans le cache GeoPackage, la couche du projet est désormais rechargée depuis le fichier .gpkg (provider ogr), avec conservation du style et de sa position dans l'arbre des couches — elle n'est plus signalée comme temporaire.
 homepage=https://github.com/votre-username/voirie_communale
 category=Plugins
 icon=icon.png
